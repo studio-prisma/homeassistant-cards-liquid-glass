@@ -500,6 +500,9 @@ test('parcels: a number Parcel cannot place gets a carrier from its format or fr
   carrier.dispatchEvent(new window.Event('change'));
   const postcodeField = () => root.querySelectorAll('label.field')[3];
   assert.equal(postcodeField().hidden, false, 'DPD shows the postcode field');
+  carrier.value = 'glsnl';
+  carrier.dispatchEvent(new window.Event('change'));
+  assert.equal(postcodeField().hidden, false, 'GLS Netherlands shows it too');
   carrier.value = 'hermes';
   carrier.dispatchEvent(new window.Event('change'));
   assert.equal(root.querySelector('.actions > span').textContent, 'Carrier chosen by hand');
