@@ -423,7 +423,7 @@ test('parcels: adding calls the integration, clears the fields and shows the new
   const { window } = boot();
   const calls = [];
   const card = mount(window, 'lg-parcels', CONFIGS['lg-parcels'], parcelHass(calls, ([domain, service]) => {
-    if (service === 'detect_carrier') return Promise.resolve({ response: { best_match: 'ups', matches: [{ carrier_code: 'ups', carrier_name: 'UPS' }] } });
+    if (service === 'detect_carrier') return Promise.resolve({ response: { best_match: 'ups', matches: [{ carrier_code: 'ups', carrier_name: 'UPS', confidence: 1, checksum_valid: true }] } });
     return Promise.resolve({ context: {}, response: { success: true } });
   }));
   const root = card.shadowRoot;
@@ -435,12 +435,13 @@ test('parcels: adding calls the integration, clears the fields and shows the new
   number.value = '1ZTEST000000000001';
   number.dispatchEvent(new window.Event('input'));
   await new Promise((resolve) => setTimeout(resolve, 600));
-  assert.equal(root.querySelector('.hintline, .tag.blue').textContent, 'Detected: UPS');
+  assert.equal(root.querySelector('select').value, 'ups', 'the carrier field is filled by the detection');
+  assert.equal(root.querySelector('.hintline').textContent, 'Carrier detected, change it if needed');
   name.value = 'Shoes';
   root.querySelector('.go').click();
   await new Promise((resolve) => setTimeout(resolve, 20));
   const add = calls.find((call) => call[1] === 'add_parcel');
-  assert.deepEqual(plain(add.slice(0, 3)), ['parcelapp', 'add_parcel', { device_id: 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4', tracking_number: '1ZTEST000000000001', parcel_name: 'Shoes', language: 'en' }]);
+  assert.deepEqual(plain(add.slice(0, 3)), ['parcelapp', 'add_parcel', { device_id: 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4', tracking_number: '1ZTEST000000000001', parcel_name: 'Shoes', language: 'en', courier: 'ups' }]);
   assert.equal(add[5], true, 'asks for the response');
   assert.equal(number.value, '');
   assert.equal(root.querySelector('.msg').textContent, 'Shoes added.');
@@ -480,7 +481,8 @@ test('parcels: a number Parcel cannot place gets a carrier from its format or fr
   number.dispatchEvent(new window.Event('input'));
   await new Promise((resolve) => setTimeout(resolve, 600));
   assert.equal(carrier.value, 'dp');
-  assert.equal(root.querySelector('.actions > span').textContent, 'Probably: DHL Paket / Deutsche Post');
+  assert.equal(root.querySelector('.actions > span').textContent, 'Carrier detected, change it if needed');
+  assert.equal(calls.some((call) => call[1] === 'detect_carrier'), false, 'a known format needs no detection call');
   root.querySelector('.go').click();
   await new Promise((resolve) => setTimeout(resolve, 20));
   assert.equal(calls.find((call) => call[1] === 'add_parcel')[2].courier, 'dp');
@@ -499,12 +501,40 @@ test('parcels: a number Parcel cannot place gets a carrier from its format or fr
   assert.match(root.querySelector('.actions > span').textContent, /postcode/, 'DPD warns that Parcel may want the postcode');
   carrier.value = 'hermes';
   carrier.dispatchEvent(new window.Event('change'));
-  assert.equal(root.querySelector('.actions > span').textContent, 'Chosen: Hermes');
+  assert.equal(root.querySelector('.actions > span').textContent, 'Carrier chosen by hand');
   root.querySelector('.go').click();
   await new Promise((resolve) => setTimeout(resolve, 20));
   const adds = calls.filter((call) => call[1] === 'add_parcel');
   assert.equal(adds[adds.length - 1][2].courier, 'hermes');
   assert.equal(root.querySelector('.msg.ok').textContent, 'QQ0000000001 added.');
+  assert.equal('postcode' in adds[adds.length - 1][2], false, 'no postcode without the option');
+});
+
+test('parcels: the configured postcode goes only with carriers that need it', async () => {
+  const { window } = boot();
+  const calls = [];
+  const card = mount(window, 'lg-parcels', { ...CONFIGS['lg-parcels'], postcode: '10115' }, parcelHass(calls, ([, service]) => (
+    service === 'detect_carrier' ? Promise.resolve({ response: { matches: [] } }) : Promise.resolve({ response: { success: true } }))));
+  const root = card.shadowRoot;
+  root.querySelector('.plus').click();
+  const [number] = root.querySelectorAll('input');
+  const carrier = root.querySelector('select');
+  const add = async (value, code) => {
+    number.value = value;
+    carrier.value = code;
+    carrier.dispatchEvent(new window.Event('change'));
+    root.querySelector('.go').click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const adds = calls.filter((call) => call[1] === 'add_parcel');
+    return adds[adds.length - 1][2];
+  };
+  number.value = '01234567890123';
+  carrier.value = 'dpdpcode';
+  carrier.dispatchEvent(new window.Event('change'));
+  assert.equal(root.querySelector('.actions > span').textContent, 'Carrier chosen by hand', 'no postcode warning when it is configured');
+  assert.equal((await add('01234567890123', 'dpdpcode')).postcode, '10115');
+  assert.equal('postcode' in (await add('1ZTEST000000000002', 'ups')), false);
+  assert.throws(() => window.document.createElement('lg-parcels').setConfig({ entity: 'sensor.x', postcode: '<b>' }), /postcode/);
 });
 
 test('parcels: no device means no add button; bad configuration is rejected; empty list can hide the card', () => {
@@ -546,4 +576,43 @@ test('parcels: more than max folds into "Show N more", expanded rows are compact
   const few = mount(window, 'lg-parcels', { entity: 'sensor.parcels_raw', max: 10 }, hass);
   assert.equal(few.shadowRoot.querySelector('.more').hidden, true);
   assert.deepEqual(errors, []);
+});
+
+test('parcels: a weak guess fills the carrier field in orange and can be changed by hand', async () => {
+  const { window } = boot();
+  const calls = [];
+  const card = mount(window, 'lg-parcels', CONFIGS['lg-parcels'], parcelHass(calls, ([, service]) => (
+    service === 'detect_carrier'
+      ? Promise.resolve({ response: { best_match: 'dhl', matches: [{ carrier_code: 'dhl', carrier_name: 'DHL', confidence: 0.5, checksum_valid: null }] } })
+      : Promise.resolve({ response: { success: true } }))));
+  const root = card.shadowRoot;
+  root.querySelector('.plus').click();
+  const [number] = root.querySelectorAll('input');
+  const carrier = root.querySelector('select');
+  number.value = '11750118044170';
+  number.dispatchEvent(new window.Event('input'));
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  assert.equal(carrier.value, 'dhl');
+  assert.equal(root.querySelector('.hintline').textContent, 'Carrier only guessed, please check');
+  assert.ok(carrier.closest('label').classList.contains('unsure'));
+  carrier.value = 'gls';
+  carrier.dispatchEvent(new window.Event('change'));
+  assert.equal(carrier.closest('label').classList.contains('unsure'), false);
+  // A late detection result must not overwrite the hand choice.
+  number.dispatchEvent(new window.Event('input'));
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  assert.equal(carrier.value, 'gls');
+  root.querySelector('.go').click();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(calls.find((call) => call[1] === 'add_parcel')[2].courier, 'gls');
+
+  // A carrier Parcel knows but the list does not gets its own option.
+  const other = mount(window, 'lg-parcels', CONFIGS['lg-parcels'], parcelHass([], ([, service]) => (
+    service === 'detect_carrier' ? Promise.resolve({ response: { best_match: 'usps', matches: [{ carrier_code: 'usps', carrier_name: 'USPS', confidence: 1 }] } }) : Promise.resolve({ response: {} }))));
+  other.shadowRoot.querySelector('.plus').click();
+  const input = other.shadowRoot.querySelector('input');
+  input.value = '9400100000000000000000';
+  input.dispatchEvent(new window.Event('input'));
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  assert.equal(other.shadowRoot.querySelector('select').value, 'usps');
 });
