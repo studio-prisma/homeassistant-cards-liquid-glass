@@ -13,6 +13,8 @@ permissions:
 jobs:
   dependency-review:
     name: Dependency review
+    # The dependency review API needs GitHub Advanced Security on private repositories.
+    if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     steps:
       - name: Review dependency changes
