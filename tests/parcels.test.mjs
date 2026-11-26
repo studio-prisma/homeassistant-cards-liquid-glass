@@ -60,6 +60,9 @@ test('expected window reads as a time range today', () => {
   const model = parcelModel([{ status_code: 4, timestamp_expected: start, timestamp_expected_end: start + 3 * 3600 }], NOW);
   assert.equal(expectedText(model[0].expected, NOW, de, 'de'), 'Voraussichtlich 12–15 Uhr');
   assert.equal(expectedText(undefined, NOW, de, 'de'), '');
+  const byDate = parcelModel([{ status_code: 2, date_expected: '2026-11-27 10:00:00', date_expected_end: '2026-11-27 14:00:00' }], NOW);
+  assert.equal(expectedText(byDate[0].expected, NOW, de, 'de'), 'Voraussichtlich morgen 10–14 Uhr');
+  assert.equal(carrierShort('dp'), 'DHL');
 });
 
 test('add result: thrown errors and refusing responses become a message, success does not', () => {

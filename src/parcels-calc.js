@@ -49,7 +49,7 @@ export const PARCEL_STATUS = {
   8: { step: 0, tone: 'blue', key: 'info_received', rank: 4 },
 };
 
-const CARRIER_SHORT = { it: 'PI', amzlde: 'AMZ', amzluk: 'AMZ', amazon: 'AMZ', hermes: 'HRM', fedex: 'FDX', dhl: 'DHL', dpd: 'DPD', ups: 'UPS', gls: 'GLS', usps: 'USPS', pholder: '?' };
+const CARRIER_SHORT = { dp: 'DHL', it: 'PI', amzlde: 'AMZ', amzluk: 'AMZ', amazon: 'AMZ', hermes: 'HRM', fedex: 'FDX', dhl: 'DHL', dpd: 'DPD', ups: 'UPS', gls: 'GLS', usps: 'USPS', pholder: '?' };
 
 export function carrierShort(code) {
   const key = String(code || '').toLowerCase();
@@ -62,7 +62,7 @@ export function parseParcelDate(value) {
   if (typeof value !== 'string') return undefined;
   let m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:[ T](\d{1,2}):(\d{2}))?/.exec(value.trim());
   if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4] || 0), Number(m[5] || 0));
-  m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2}))?$/.exec(value.trim());
+  m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?)?$/.exec(value.trim());
   if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4] || 0), Number(m[5] || 0));
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? undefined : date;
@@ -126,11 +126,17 @@ export function parcelModel(deliveries, now, options = {}) {
   return out;
 }
 
+/** Expected delivery: unix timestamps when the carrier gives them, otherwise the date strings. */
 function expectedWindow(raw) {
   const start = Number(raw.timestamp_expected);
-  if (!Number.isFinite(start) || start <= 0) return undefined;
-  const end = Number(raw.timestamp_expected_end);
-  return { start: new Date(start * 1000), end: Number.isFinite(end) && end > start ? new Date(end * 1000) : undefined };
+  if (Number.isFinite(start) && start > 0) {
+    const end = Number(raw.timestamp_expected_end);
+    return { start: new Date(start * 1000), end: Number.isFinite(end) && end > start ? new Date(end * 1000) : undefined };
+  }
+  const from = parseParcelDate(raw.date_expected);
+  if (!from) return undefined;
+  const to = parseParcelDate(raw.date_expected_end);
+  return { start: from, end: to && to > from ? to : undefined };
 }
 
 /** "Voraussichtlich 12–15 Uhr" style text for a parcel with an expected window. */
