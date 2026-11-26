@@ -396,7 +396,7 @@ export const SPECS = {
     ],
   },
   'lg-parcels': {
-    defaults: (hass) => ({ title: parcelText(locale(hass)).title, keep_days: 2, max: 6, show_steps: true, hide_empty: false, empty_text: parcelText(locale(hass)).empty }),
+    defaults: (hass) => ({ title: parcelText(locale(hass)).title, keep_days: 2, max: 3, show_steps: true, hide_empty: false, empty_text: parcelText(locale(hass)).empty }),
     lists: {},
     schema: () => [
       { name: 'entity', selector: entity('sensor'), label_key: 'parcel_entity' },
