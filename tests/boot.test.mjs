@@ -498,29 +498,32 @@ test('parcels: a number Parcel cannot place gets a carrier from its format or fr
   assert.equal(root.querySelector('.msg.err').textContent, 'Not added: Carrier not recognised, please choose it.');
   carrier.value = 'dpdpcode';
   carrier.dispatchEvent(new window.Event('change'));
-  assert.match(root.querySelector('.actions > span').textContent, /postcode/, 'DPD warns that Parcel may want the postcode');
+  const postcodeField = () => root.querySelectorAll('label.field')[3];
+  assert.equal(postcodeField().hidden, false, 'DPD shows the postcode field');
   carrier.value = 'hermes';
   carrier.dispatchEvent(new window.Event('change'));
   assert.equal(root.querySelector('.actions > span').textContent, 'Carrier chosen by hand');
+  assert.equal(postcodeField().hidden, true, 'other carriers hide it');
   root.querySelector('.go').click();
   await new Promise((resolve) => setTimeout(resolve, 20));
   const adds = calls.filter((call) => call[1] === 'add_parcel');
   assert.equal(adds[adds.length - 1][2].courier, 'hermes');
   assert.equal(root.querySelector('.msg.ok').textContent, 'QQ0000000001 added.');
-  assert.equal('postcode' in adds[adds.length - 1][2], false, 'no postcode without the option');
+  assert.equal('postcode' in adds[adds.length - 1][2], false, 'no postcode for carriers that do not need one');
 });
 
-test('parcels: the configured postcode goes only with carriers that need it', async () => {
+test('parcels: a typed postcode goes only with carriers that need it; empty leaves the integration default', async () => {
   const { window } = boot();
   const calls = [];
-  const card = mount(window, 'lg-parcels', { ...CONFIGS['lg-parcels'], postcode: '10115' }, parcelHass(calls, ([, service]) => (
+  const card = mount(window, 'lg-parcels', CONFIGS['lg-parcels'], parcelHass(calls, ([, service]) => (
     service === 'detect_carrier' ? Promise.resolve({ response: { matches: [] } }) : Promise.resolve({ response: { success: true } }))));
   const root = card.shadowRoot;
   root.querySelector('.plus').click();
-  const [number] = root.querySelectorAll('input');
+  const [number, , postcode] = root.querySelectorAll('input');
   const carrier = root.querySelector('select');
-  const add = async (value, code) => {
+  const add = async (value, code, plz = '') => {
     number.value = value;
+    postcode.value = plz;
     carrier.value = code;
     carrier.dispatchEvent(new window.Event('change'));
     root.querySelector('.go').click();
@@ -528,13 +531,11 @@ test('parcels: the configured postcode goes only with carriers that need it', as
     const adds = calls.filter((call) => call[1] === 'add_parcel');
     return adds[adds.length - 1][2];
   };
-  number.value = '01234567890123';
-  carrier.value = 'dpdpcode';
-  carrier.dispatchEvent(new window.Event('change'));
-  assert.equal(root.querySelector('.actions > span').textContent, 'Carrier chosen by hand', 'no postcode warning when it is configured');
-  assert.equal((await add('01234567890123', 'dpdpcode')).postcode, '10115');
-  assert.equal('postcode' in (await add('1ZTEST000000000002', 'ups')), false);
-  assert.throws(() => window.document.createElement('lg-parcels').setConfig({ entity: 'sensor.x', postcode: '<b>' }), /postcode/);
+  assert.equal(postcode.placeholder, 'Empty = default from the Parcel settings');
+  assert.equal((await add('01234567890123', 'dpdpcode', ' 50667 ')).postcode, '50667');
+  assert.equal(postcode.value, '', 'cleared after adding');
+  assert.equal('postcode' in (await add('01234567890124', 'dpdpcode')), false, 'empty leaves the integration default');
+  assert.equal('postcode' in (await add('1ZTEST000000000002', 'ups', '50667')), false, 'never for carriers that do not need it');
 });
 
 test('parcels: no device means no add button; bad configuration is rejected; empty list can hide the card', () => {
