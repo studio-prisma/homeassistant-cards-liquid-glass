@@ -42,7 +42,7 @@ npm run lint
 npm test
 ```
 
-CI runs the same on Node 22 and 24, plus the HACS validation, a workflow lint and the central security scan. The aggregating job is called **Gate**. A red pipeline is not mergeable.
+CI runs the same on Node 22 and 24, plus a workflow lint, the central security scan and the HACS validation. The aggregating job is called **Gate**. A red pipeline is not mergeable. Until 0.2.0 the HACS validation is informational, because HACS ignores pre-releases; it joins the Gate with the first stable release.
 
 ## Code conventions
 
@@ -63,3 +63,4 @@ CI runs the same on Node 22 and 24, plus the HACS validation, a workflow lint an
 3. `git commit -m "chore(release): vX.Y.Z"`
 4. `git tag -a vX.Y.Z -m "vX.Y.Z"` and push the tag. Pre-releases use `vX.Y.Z-rc.N`.
 5. The release workflow checks the version, runs lint and tests, builds and attaches `liquid-glass-cards.js`.
+6. For 0.2.0 (first stable release): add `hacs` back to the `needs` of the Gate job in `validate.yml`.
