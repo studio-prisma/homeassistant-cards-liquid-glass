@@ -7,7 +7,7 @@ export const PARCEL_TEXT = {
   en: {
     title: 'Parcels', add: 'Add', adding: 'Adding…', add_title: 'Add parcel', close: 'Close',
     number: 'Tracking number', label: 'Name', detected: 'Detected:', unknown_carrier: 'Carrier is detected from the number',
-    carrier: 'Carrier', carrier_auto: 'Detect automatically', guessed: 'Probably:', chosen: 'Chosen:', not_detected: 'Carrier not recognised, please choose it.',
+    carrier: 'Carrier', carrier_auto: 'Detect automatically', carrier_sure: 'Carrier detected, change it if needed', carrier_chosen: 'Carrier chosen by hand', carrier_unsure: 'Carrier only guessed, please check', not_detected: 'Carrier not recognised, please choose it.',
     needs_postcode: 'Parcel may need the postcode for this carrier; add it in the Parcel app if tracking stays empty.',
     added: 'added.', failed: 'Not added:', failed_default: 'Parcel refused it (daily limit or unknown number).',
     more: 'Show {n} more', less: 'Show less', empty: 'No parcels.', just_added: 'Just added', new: 'New', expected: 'Expected', today_word: 'today', yesterday_word: 'yesterday',
@@ -22,7 +22,7 @@ export const PARCEL_TEXT = {
   de: {
     title: 'Pakete', add: 'Hinzufügen', adding: 'Wird hinzugefügt …', add_title: 'Sendung hinzufügen', close: 'Schließen',
     number: 'Sendungsnummer', label: 'Bezeichnung', detected: 'Erkannt:', unknown_carrier: 'Paketdienst wird aus der Nummer erkannt',
-    carrier: 'Paketdienst', carrier_auto: 'Automatisch erkennen', guessed: 'Vermutlich:', chosen: 'Gewählt:', not_detected: 'Paketdienst nicht erkannt, bitte auswählen.',
+    carrier: 'Paketdienst', carrier_auto: 'Automatisch erkennen', carrier_sure: 'Paketdienst erkannt, bei Bedarf ändern', carrier_chosen: 'Paketdienst von Hand gewählt', carrier_unsure: 'Paketdienst nur geraten, bitte prüfen', not_detected: 'Paketdienst nicht erkannt, bitte auswählen.',
     needs_postcode: 'Parcel braucht hier evtl. die Postleitzahl. Bleibt die Verfolgung leer, in der Parcel-App nachtragen.',
     added: 'hinzugefügt.', failed: 'Nicht hinzugefügt:', failed_default: 'Parcel hat abgelehnt (Tageslimit oder Nummer unbekannt).',
     more: '{n} weitere anzeigen', less: 'Weniger anzeigen', empty: 'Keine Sendungen.', just_added: 'Gerade hinzugefügt', new: 'Neu', expected: 'Voraussichtlich', today_word: 'heute', yesterday_word: 'gestern',

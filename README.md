@@ -224,12 +224,13 @@ Without `statistics` the card adds up the top-level devices of the energy settin
 type: custom:lg-parcels
 entity: sensor.parcel_raw_shipment_data     # raw shipment data sensor of the Parcel integration
 device_id: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4  # optional: Parcel device, shows the + button for adding
+postcode: '10115'                           # optional: sent only for carriers that need it (DPD Germany, PostNL)
 keep_days: 2                                # delivered parcels stay this many days, faded
 max: 3                                      # more parcels sit behind "Show N more"
 hide_empty: false                           # true: no card when there is nothing to show
 ```
 
-Needs the [Parcel](https://github.com/jmdevita/parcel-ha) integration. The card reads the `deliveries` attribute of the raw shipment data sensor. Instead of a count it writes one or two sentences ("Shoes are announced. Books arrived yesterday."). Parcels out for delivery are amber, missed deliveries, pick-ups and problems orange. A tap on a parcel opens its last events. The + button opens two fields in the card; the carrier is detected while typing (`parcelapp.detect_carrier`) and the parcel is added with `parcelapp.add_parcel`. Adding needs Parcel Premium, which allows about 20 additions a day; a refusal is shown under the button. Event texts come from the carrier in its own language; common phrases of the larger carriers (Amazon, DHL, DPD, Hermes, GLS, UPS, Poste Italiane) are shown in German or English, the original stays on hover, unknown texts are shown as sent. Nothing is sent to a translation service.
+Needs the [Parcel](https://github.com/jmdevita/parcel-ha) integration. The card reads the `deliveries` attribute of the raw shipment data sensor. Instead of a count it writes one or two sentences ("Shoes are announced. Books arrived yesterday."). Parcels out for delivery are amber, missed deliveries, pick-ups and problems orange. A tap on a parcel opens its last events. The + button opens the form in the card; the carrier is detected while typing (`parcelapp.detect_carrier`), and when Parcel cannot place a number it can be chosen in the carrier picker (DHL Paket `JJD…` numbers are preselected). The parcel is added with `parcelapp.add_parcel`. DPD Germany and PostNL also want the postcode of the delivery address: set `postcode`, which needs a Parcel integration whose `add_parcel` accepts it. Adding needs Parcel Premium, which allows about 20 additions a day; a refusal is shown under the button. Event texts come from the carrier in its own language; common phrases of the larger carriers (Amazon, DHL, DPD, Hermes, GLS, UPS, Poste Italiane) are shown in German or English, the original stays on hover, unknown texts are shown as sent. Nothing is sent to a translation service.
 
 ### lg-idle (wall displays)
 
