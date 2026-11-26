@@ -1,7 +1,7 @@
 import { h, locale, fire, isUsable, SVG_NS } from './core.js';
 import { createEditor } from './editor.js';
 import { LgBase } from './base.js';
-import { parcelText, parcelModel, parcelSummary, relativeDate, expectedText, addError, PARCEL_CARRIERS, guessCarrier, carrierName } from './parcels-calc.js';
+import { parcelText, parcelModel, parcelSummary, relativeDate, expectedText, addError, PARCEL_CARRIERS, PARCEL_NEEDS_POSTCODE, guessCarrier, carrierName } from './parcels-calc.js';
 import { translateEvent } from './parcel-phrases.js';
 
 /**
@@ -181,7 +181,19 @@ export class LgParcels extends LgBase {
     this._inNumber.addEventListener('input', () => this._detectSoon());
     // Parcel cannot tell every number's carrier (DHL Paket "JJD…" for one); then the carrier is chosen here.
     this._inCarrier = h('select', null, h('option', { value: '' }, text.carrier_auto), ...PARCEL_CARRIERS.map(([key, label]) => h('option', { value: key }, label)));
-    this._inCarrier.addEventListener('change', () => { this._carrierTouched = true; });
+    this._inCarrier.addEventListener('change', () => {
+      const code = this._inCarrier.value;
+      this._carrierTouched = Boolean(code);
+      if (PARCEL_NEEDS_POSTCODE.includes(code)) {
+        this._hintLine.textContent = text.needs_postcode;
+        this._hintLine.className = 'hintline warn';
+      } else if (code) {
+        this._hintLine.textContent = `${text.chosen} ${carrierName(code)}`;
+        this._hintLine.className = 'tag blue';
+      } else {
+        this._detectSoon();
+      }
+    });
     const carrier = h('label', { class: 'field' }, h('span', null, text.carrier), this._inCarrier);
     this._hintLine = h('span', { class: 'hintline' }, text.unknown_carrier);
     this._go = h('button', { class: 'go press', type: 'button' }, text.add);
@@ -243,8 +255,11 @@ export class LgParcels extends LgBase {
   _showGuess(value) {
     const guess = guessCarrier(value);
     if (guess && !this._carrierTouched) this._inCarrier.value = guess;
-    if (this._inCarrier.value) {
-      this._hintLine.textContent = `${guess && !this._carrierTouched ? this._text.guessed : this._text.detected} ${carrierName(this._inCarrier.value)}`;
+    if (PARCEL_NEEDS_POSTCODE.includes(this._inCarrier.value)) {
+      this._hintLine.textContent = this._text.needs_postcode;
+      this._hintLine.className = 'hintline warn';
+    } else if (this._inCarrier.value) {
+      this._hintLine.textContent = `${this._carrierTouched ? this._text.chosen : this._text.guessed} ${carrierName(this._inCarrier.value)}`;
       this._hintLine.className = 'tag blue';
     } else {
       this._hintLine.textContent = this._text.not_detected;

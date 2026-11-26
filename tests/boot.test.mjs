@@ -494,8 +494,12 @@ test('parcels: a number Parcel cannot place gets a carrier from its format or fr
   root.querySelector('.go').click();
   await new Promise((resolve) => setTimeout(resolve, 20));
   assert.equal(root.querySelector('.msg.err').textContent, 'Not added: Carrier not recognised, please choose it.');
+  carrier.value = 'dpdpcode';
+  carrier.dispatchEvent(new window.Event('change'));
+  assert.match(root.querySelector('.actions > span').textContent, /postcode/, 'DPD warns that Parcel may want the postcode');
   carrier.value = 'hermes';
   carrier.dispatchEvent(new window.Event('change'));
+  assert.equal(root.querySelector('.actions > span').textContent, 'Chosen: Hermes');
   root.querySelector('.go').click();
   await new Promise((resolve) => setTimeout(resolve, 20));
   const adds = calls.filter((call) => call[1] === 'add_parcel');
