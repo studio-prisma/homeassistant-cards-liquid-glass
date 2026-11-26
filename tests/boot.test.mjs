@@ -459,6 +459,54 @@ test('parcels: adding calls the integration, clears the fields and shows the new
   assert.equal(r2.querySelector('input').value, 'X123456789', 'the number stays for a retry');
 });
 
+test('parcels: a number Parcel cannot place gets a carrier from its format or from the picker', async () => {
+  const { window } = boot();
+  const calls = [];
+  const card = mount(window, 'lg-parcels', CONFIGS['lg-parcels'], parcelHass(calls, ([, service]) => {
+    if (service === 'detect_carrier') return Promise.resolve({ response: { matches: [], best_match: null } });
+    if (service === 'add_parcel') {
+      const data = calls[calls.length - 1][2];
+      return data.courier ? Promise.resolve({ response: { success: true } }) : Promise.reject({ code: 'home_assistant_error', message: "Could not auto-detect carrier for tracking number 'X'. Please provide the 'courier' field manually." });
+    }
+    return Promise.resolve({ context: {} });
+  }));
+  const root = card.shadowRoot;
+  root.querySelector('.plus').click();
+  const [number] = root.querySelectorAll('input');
+  const carrier = root.querySelector('select');
+  assert.equal(carrier.value, '', 'starts on automatic');
+  // DHL Paket "JJD…" is not known to Parcel's detection: preselected from the format.
+  number.value = 'JJD149990200088396073';
+  number.dispatchEvent(new window.Event('input'));
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  assert.equal(carrier.value, 'dp');
+  assert.equal(root.querySelector('.actions > span').textContent, 'Probably: DHL Paket / Deutsche Post');
+  root.querySelector('.go').click();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(calls.find((call) => call[1] === 'add_parcel')[2].courier, 'dp');
+  assert.equal(carrier.value, '', 'back to automatic after adding');
+
+  // Unknown format: the refusal is said in plain words, the picker fixes it.
+  number.value = 'QQ0000000001';
+  number.dispatchEvent(new window.Event('input'));
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  assert.equal(root.querySelector('.actions > span').textContent, 'Carrier not recognised, please choose it.');
+  root.querySelector('.go').click();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(root.querySelector('.msg.err').textContent, 'Not added: Carrier not recognised, please choose it.');
+  carrier.value = 'dpdpcode';
+  carrier.dispatchEvent(new window.Event('change'));
+  assert.match(root.querySelector('.actions > span').textContent, /postcode/, 'DPD warns that Parcel may want the postcode');
+  carrier.value = 'hermes';
+  carrier.dispatchEvent(new window.Event('change'));
+  assert.equal(root.querySelector('.actions > span').textContent, 'Chosen: Hermes');
+  root.querySelector('.go').click();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  const adds = calls.filter((call) => call[1] === 'add_parcel');
+  assert.equal(adds[adds.length - 1][2].courier, 'hermes');
+  assert.equal(root.querySelector('.msg.ok').textContent, 'QQ0000000001 added.');
+});
+
 test('parcels: no device means no add button; bad configuration is rejected; empty list can hide the card', () => {
   const { window } = boot();
   const hass = parcelHass([]);

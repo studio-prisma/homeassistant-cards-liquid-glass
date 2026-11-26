@@ -7,6 +7,8 @@ export const PARCEL_TEXT = {
   en: {
     title: 'Parcels', add: 'Add', adding: 'Adding…', add_title: 'Add parcel', close: 'Close',
     number: 'Tracking number', label: 'Name', detected: 'Detected:', unknown_carrier: 'Carrier is detected from the number',
+    carrier: 'Carrier', carrier_auto: 'Detect automatically', guessed: 'Probably:', chosen: 'Chosen:', not_detected: 'Carrier not recognised, please choose it.',
+    needs_postcode: 'Parcel may need the postcode for this carrier; add it in the Parcel app if tracking stays empty.',
     added: 'added.', failed: 'Not added:', failed_default: 'Parcel refused it (daily limit or unknown number).',
     more: 'Show {n} more', less: 'Show less', empty: 'No parcels.', just_added: 'Just added', new: 'New', expected: 'Expected', today_word: 'today', yesterday_word: 'yesterday',
     steps: ['Announced', 'On the way', 'Delivery', 'Here'],
@@ -20,6 +22,8 @@ export const PARCEL_TEXT = {
   de: {
     title: 'Pakete', add: 'Hinzufügen', adding: 'Wird hinzugefügt …', add_title: 'Sendung hinzufügen', close: 'Schließen',
     number: 'Sendungsnummer', label: 'Bezeichnung', detected: 'Erkannt:', unknown_carrier: 'Paketdienst wird aus der Nummer erkannt',
+    carrier: 'Paketdienst', carrier_auto: 'Automatisch erkennen', guessed: 'Vermutlich:', chosen: 'Gewählt:', not_detected: 'Paketdienst nicht erkannt, bitte auswählen.',
+    needs_postcode: 'Parcel braucht hier evtl. die Postleitzahl. Bleibt die Verfolgung leer, in der Parcel-App nachtragen.',
     added: 'hinzugefügt.', failed: 'Nicht hinzugefügt:', failed_default: 'Parcel hat abgelehnt (Tageslimit oder Nummer unbekannt).',
     more: '{n} weitere anzeigen', less: 'Weniger anzeigen', empty: 'Keine Sendungen.', just_added: 'Gerade hinzugefügt', new: 'Neu', expected: 'Voraussichtlich', today_word: 'heute', yesterday_word: 'gestern',
     steps: ['Angekündigt', 'Unterwegs', 'Zustellung', 'Da'],
@@ -50,6 +54,40 @@ export const PARCEL_STATUS = {
 };
 
 const CARRIER_SHORT = { dp: 'DHL', it: 'PI', amzlde: 'AMZ', amzluk: 'AMZ', amazon: 'AMZ', hermes: 'HRM', fedex: 'FDX', dhl: 'DHL', dpd: 'DPD', ups: 'UPS', gls: 'GLS', usps: 'USPS', pholder: '?' };
+
+/**
+ * Carriers offered when Parcel cannot tell the carrier from the number. Keys
+ * are Parcel's carrier keys (api.parcel.app/external/supported_carriers.json),
+ * the usual ones in Germany first. DPD Germany (`dpdpcode`) wants a postcode at
+ * Parcel; the integration does not pass one, so the card says so when chosen.
+ */
+export const PARCEL_CARRIERS = [
+  ['dp', 'DHL Paket / Deutsche Post'], ['dpr', 'Deutsche Post Brief'], ['dhl', 'DHL Express'], ['hermes', 'Hermes'],
+  ['dpdpcode', 'DPD'], ['gls', 'GLS'], ['ups', 'UPS'], ['amzlde', 'Amazon (DE)'], ['fedex', 'FedEx'], ['tnt', 'TNT'],
+  ['gover', 'GO! Express'], ['aliex', 'AliExpress / Cainiao'], ['it', 'Poste Italiane'], ['at', 'Österreichische Post'],
+  ['swiss', 'Swiss Post'], ['tntp', 'PostNL'],
+];
+
+/** Carriers for which Parcel wants a postcode the integration cannot send yet. */
+export const PARCEL_NEEDS_POSTCODE = ['dpdpcode', 'tntp'];
+
+/** Number formats Parcel's own detection misses, e.g. DHL Paket "JJD…" from business senders. */
+const CARRIER_GUESSES = [
+  [/^JJD\d{10,}$/i, 'dp'],
+  [/^JVGL\d{10,}$/i, 'dp'],
+  [/^00340\d{15}$/, 'dp'],
+];
+
+export function guessCarrier(number) {
+  const value = String(number || '').replace(/\s+/g, '');
+  const hit = CARRIER_GUESSES.find(([pattern]) => pattern.test(value));
+  return hit ? hit[1] : undefined;
+}
+
+export function carrierName(code) {
+  const hit = PARCEL_CARRIERS.find(([key]) => key === code);
+  return hit ? hit[1] : String(code || '');
+}
 
 export function carrierShort(code) {
   const key = String(code || '').toLowerCase();
@@ -230,13 +268,15 @@ export function parcelSummary(model, now, text) {
 
 /** Error text of a failed add, from a thrown error or a response that says it failed. */
 export function addError(result, text) {
+  // Parcel's "Could not auto-detect carrier … provide the 'courier' field" is said in plain words.
+  const plainWords = (message) => (/auto-detect carrier|'courier' field/i.test(message) ? text.not_detected : message.slice(0, 120));
   if (result instanceof Error || (result && typeof result.message === 'string' && !('response' in result))) {
-    return String(result.message || '').slice(0, 120) || text.failed_default;
+    return plainWords(String(result.message || '')) || text.failed_default;
   }
   const response = result && result.response;
   if (response && typeof response === 'object') {
     if (response.success === false || response.error_message || response.error) {
-      return String(response.error_message || response.error || text.failed_default).slice(0, 120);
+      return plainWords(String(response.error_message || response.error || text.failed_default));
     }
   }
   return undefined;
