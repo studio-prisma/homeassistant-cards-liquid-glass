@@ -16,7 +16,7 @@ cd homeassistant-cards-liquid-glass
 npm ci --ignore-scripts
 ```
 
-Node 20 or newer. The only dependency is `jsdom`, used by the tests. Nothing from npm is part of the shipped file.
+Node 22 or newer. The only dependency is `jsdom`, used by the tests. Nothing from npm is part of the shipped file.
 
 ## Layout
 
@@ -42,7 +42,7 @@ npm run lint
 npm test
 ```
 
-CI runs the same on Node 20, 22 and 24, plus the HACS validation, a workflow lint and the central security scan. The aggregating job is called **Gate**. A red pipeline is not mergeable.
+CI runs the same on Node 22 and 24, plus the HACS validation, a workflow lint and the central security scan. The aggregating job is called **Gate**. A red pipeline is not mergeable.
 
 ## Code conventions
 
