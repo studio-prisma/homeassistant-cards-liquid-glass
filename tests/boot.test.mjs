@@ -414,7 +414,8 @@ test('parcels: sentence, urgent rows first, names as text, history on tap', () =
   const tl = root.querySelectorAll('.p')[1].querySelector('.tl');
   assert.ok(tl);
   assert.equal(tl.children.length, 2);
-  assert.match(tl.children[0].textContent, /In der Filiale.*Filiale/);
+  assert.match(tl.children[0].textContent, /^Ready for pick-up.*Filiale/);
+  assert.equal(tl.children[0].getAttribute('title'), 'In der Filiale', 'the original wording stays on hover');
   assert.deepEqual(errors, []);
 });
 

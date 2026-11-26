@@ -2,6 +2,7 @@ import { h, locale, fire, isUsable, SVG_NS } from './core.js';
 import { createEditor } from './editor.js';
 import { LgBase } from './base.js';
 import { parcelText, parcelModel, parcelSummary, relativeDate, expectedText, addError } from './parcels-calc.js';
+import { translateEvent } from './parcel-phrases.js';
 
 /**
  * Parcels from the Parcel integration: one sentence on what is going on, a
@@ -318,7 +319,7 @@ export class LgParcels extends LgBase {
       ? ''
       : fresh && !parcel.last
         ? text.just_added
-        : expectedText(parcel.expected, now, text, locale(this._hass)) || (parcel.last ? [parcel.last.text.slice(0, 80), relativeDate(parcel.last.date, now, text)].filter(Boolean).join(' · ') : '');
+        : expectedText(parcel.expected, now, text, locale(this._hass)) || (parcel.last ? [translateEvent(parcel.last.text, locale(this._hass)).text.slice(0, 80), relativeDate(parcel.last.date, now, text)].filter(Boolean).join(' · ') : '');
     const info = h('div', { class: 'grow' }, h('div', { class: 'name' }, parcel.name));
     if (meta && !compact) info.append(h('div', { class: 'meta' }, meta));
     row.append(h('div', { class: 'top' }, h('div', { class: 'badge' }, parcel.carrier), info, h('span', { class: `tag ${tagTone}` }, fresh ? text.new : status)));
@@ -335,7 +336,9 @@ export class LgParcels extends LgBase {
       const tl = h('div', { class: 'tl' });
       for (const event of parcel.events.slice(0, 5)) {
         const when = [relativeDate(event.date, now, text), event.location].filter(Boolean).join(' · ');
-        tl.append(h('div', null, event.text.slice(0, 140), when ? h('small', null, when) : undefined));
+        const shown = translateEvent(event.text, locale(this._hass));
+        // The carrier's own wording stays available on hover when the line is translated.
+        tl.append(h('div', { title: shown.translated ? event.text.slice(0, 200) : undefined }, shown.text.slice(0, 140), when ? h('small', null, when) : undefined));
       }
       row.append(tl);
     }

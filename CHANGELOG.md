@@ -8,6 +8,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 - `lg-parcels`: parcels from the Parcel integration with a summary sentence instead of a count, a four-step track per parcel, the history on tap, and adding a parcel in place with carrier detection.
 - `lg-parcels`: at most `max` parcels (default 3), the rest behind "Show N more"; expanded rows are compact and fold back after two minutes without input.
+- `lg-parcels`: common carrier event texts translated to German or English (original on hover); dates in words without a year (Amazon) read correctly; dates without a time show no time.
 
 ## [0.2.0-rc.1] - 2026-11-26
 

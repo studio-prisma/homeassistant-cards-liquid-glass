@@ -229,7 +229,7 @@ max: 3                                      # more parcels sit behind "Show N mo
 hide_empty: false                           # true: no card when there is nothing to show
 ```
 
-Needs the [Parcel](https://github.com/jmdevita/parcel-ha) integration. The card reads the `deliveries` attribute of the raw shipment data sensor. Instead of a count it writes one or two sentences ("Shoes are announced. Books arrived yesterday."). Parcels out for delivery are amber, missed deliveries, pick-ups and problems orange. A tap on a parcel opens its last events. The + button opens two fields in the card; the carrier is detected while typing (`parcelapp.detect_carrier`) and the parcel is added with `parcelapp.add_parcel`. Adding needs Parcel Premium, which allows about 20 additions a day; a refusal is shown under the button.
+Needs the [Parcel](https://github.com/jmdevita/parcel-ha) integration. The card reads the `deliveries` attribute of the raw shipment data sensor. Instead of a count it writes one or two sentences ("Shoes are announced. Books arrived yesterday."). Parcels out for delivery are amber, missed deliveries, pick-ups and problems orange. A tap on a parcel opens its last events. The + button opens two fields in the card; the carrier is detected while typing (`parcelapp.detect_carrier`) and the parcel is added with `parcelapp.add_parcel`. Adding needs Parcel Premium, which allows about 20 additions a day; a refusal is shown under the button. Event texts come from the carrier in its own language; common phrases of the larger carriers (Amazon, DHL, DPD, Hermes, GLS, UPS, Poste Italiane) are shown in German or English, the original stays on hover, unknown texts are shown as sent. Nothing is sent to a translation service.
 
 ### lg-idle (wall displays)
 

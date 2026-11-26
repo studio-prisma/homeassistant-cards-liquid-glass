@@ -73,3 +73,40 @@ test('add result: thrown errors and refusing responses become a message, success
   assert.equal(addError(new Error('Service failed'), de), 'Service failed');
   assert.equal(addError({ code: 'home_assistant_error', message: 'Bad number' }, de), 'Bad number');
 });
+
+test('dates in words without a year get the year closest to now; dates without a time show no time', async () => {
+  const d = parseParcelDate('Thursday, 26 November 7:19 am', NOW);
+  assert.deepEqual([d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes()], [2026, 10, 26, 7, 19]);
+  assert.equal(relativeDate(d, NOW, de), 'heute 07:19');
+  const noTime = parseParcelDate('Thursday, 26 November ', NOW);
+  assert.equal(noTime.noTime, true);
+  assert.equal(relativeDate(noTime, NOW, de), 'heute');
+  assert.equal(parseParcelDate('November 26, 2026 7:05 PM', NOW).getHours(), 19);
+  assert.equal(parseParcelDate('12 am', NOW), undefined);
+  const january = parseParcelDate('Friday, 2 January', new Date(2026, 11, 30));
+  assert.equal(january.getFullYear(), 2027, 'early January seen in late December is next year');
+  const december = parseParcelDate('Monday, 29 December 9:00 am', new Date(2027, 0, 2));
+  assert.equal(december.getFullYear(), 2026);
+  assert.equal(parseParcelDate('26. November 2026', NOW).getDate(), 26);
+  assert.equal(parseParcelDate('Blursday, 40 Smarch', NOW), undefined);
+});
+
+test('event texts: known carrier phrases are translated, the rest stays as sent', async () => {
+  const { translateEvent } = await import('../src/parcel-phrases.js');
+  const tr = (text, lang = 'de') => translateEvent(text, lang).text;
+  assert.equal(tr('Package arrived at an Amazon facility'), 'Im Amazon-Logistikzentrum angekommen');
+  assert.equal(tr('Package left the courier facility'), 'Hat das Verteilzentrum verlassen');
+  assert.equal(tr('La spedizione è stata consegnata'), 'Zugestellt');
+  assert.equal(tr('consegna non andata a buon fine per destinatario assente'), 'Zustellung nicht möglich');
+  assert.equal(tr('cambio disposizioni di consegna'), 'Zustellwunsch geändert');
+  assert.equal(tr('la spedizione è stata presa in carico presso il Punto Poste'), 'Vom Paketdienst übernommen');
+  assert.equal(tr('Versender hat einen Aufkleber erstellt, UPS hat das Paket noch nicht erhalten.'), 'Label erstellt, noch nicht beim Paketdienst');
+  assert.equal(tr('Out for delivery'), 'In Zustellung');
+  assert.equal(tr('Your package will be delivered tomorrow'), 'Zustellung geplant', 'a future delivery is not "delivered"');
+  assert.equal(tr('Die Sendung konnte nicht zugestellt werden'), 'Zustellung nicht möglich');
+  assert.equal(tr('Die Sendung wurde erfolgreich zugestellt.', 'en'), 'Delivered');
+  assert.equal(tr('Something only this carrier says'), 'Something only this carrier says');
+  assert.equal(translateEvent('Something only this carrier says', 'de').translated, false);
+  assert.equal(translateEvent('', 'de').text, '');
+  assert.equal(translateEvent(undefined, 'de').text, '');
+});

@@ -57,15 +57,58 @@ export function carrierShort(code) {
   return key.replace(/[^a-z0-9]/g, '').slice(0, 3).toUpperCase() || '?';
 }
 
-/** Event dates come as "25.11.2026 19:56", "2026-11-26 09:46" or ISO. Read as local time. */
-export function parseParcelDate(value) {
-  if (typeof value !== 'string') return undefined;
-  let m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:[ T](\d{1,2}):(\d{2}))?/.exec(value.trim());
-  if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4] || 0), Number(m[5] || 0));
-  m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?)?$/.exec(value.trim());
-  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4] || 0), Number(m[5] || 0));
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? undefined : date;
+const PARCEL_MONTHS = {
+  jan: 0, january: 0, januar: 0, feb: 1, february: 1, februar: 1, mar: 2, march: 2, märz: 2, maerz: 2, apr: 3, april: 3,
+  may: 4, mai: 4, jun: 5, june: 5, juni: 5, jul: 6, july: 6, juli: 6, aug: 7, august: 7, sep: 8, sept: 8, september: 8,
+  oct: 9, october: 9, okt: 9, oktober: 9, nov: 10, november: 10, dec: 11, december: 11, dez: 11, dezember: 11,
+};
+
+/** A date without a time of day; the card then shows no time. */
+function parcelDay(year, month, day, hour, minute) {
+  const date = new Date(year, month, day, hour === undefined ? 0 : hour, minute || 0);
+  if (hour === undefined) date.noTime = true;
+  return date;
+}
+
+function parcelHour(hour, minute, half) {
+  let h = Number(hour);
+  const ampm = String(half || '').toLowerCase();
+  if (ampm === 'pm' && h < 12) h += 12;
+  if (ampm === 'am' && h === 12) h = 0;
+  return { h, m: Number(minute || 0) };
+}
+
+/**
+ * Event dates come as "25.11.2026 19:56", "2026-11-26 09:46", ISO, or in words
+ * without a year ("Thursday, 26 November 7:19 am", "November 26, 2026"). Read as
+ * local time; a missing year is the one that puts the date closest to now.
+ */
+export function parseParcelDate(value, now = new Date()) {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  const text = value.trim();
+  let m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:[ T,]+(\d{1,2}):(\d{2}))?/.exec(text);
+  if (m) return parcelDay(Number(m[3]), Number(m[2]) - 1, Number(m[1]), m[4] === undefined ? undefined : Number(m[4]), Number(m[5] || 0));
+  m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?)?$/.exec(text);
+  if (m) return parcelDay(Number(m[1]), Number(m[2]) - 1, Number(m[3]), m[4] === undefined ? undefined : Number(m[4]), Number(m[5] || 0));
+  if (/^\d{4}-\d{2}-\d{2}T/.test(text)) {
+    const iso = new Date(text);
+    return Number.isNaN(iso.getTime()) ? undefined : iso;
+  }
+  // Words: optional weekday, then "26 November" or "November 26", optional year, optional time.
+  const words = text.toLowerCase().replace(/^([a-zäöü]+),?\s+(?=\d|[a-zäöü]+\s+\d)/, (all, word) => (PARCEL_MONTHS[word] === undefined ? '' : all));
+  m = /^(?:(\d{1,2})\.?\s+([a-zäöü]+)\.?|([a-zäöü]+)\.?\s+(\d{1,2})(?:st|nd|rd|th)?),?(?:\s+(\d{4}))?(?:,?\s+(?:at\s+|um\s+)?(\d{1,2}):(\d{2})\s*(am|pm)?)?/.exec(words);
+  if (!m) return undefined;
+  const month = PARCEL_MONTHS[m[2] || m[3]];
+  if (month === undefined) return undefined;
+  const day = Number(m[1] || m[4]);
+  const time = m[6] !== undefined ? parcelHour(m[6], m[7], m[8]) : undefined;
+  if (m[5]) return parcelDay(Number(m[5]), month, day, time && time.h, time && time.m);
+  let best;
+  for (const year of [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1]) {
+    const candidate = parcelDay(year, month, day, time && time.h, time && time.m);
+    if (!best || Math.abs(candidate - now) < Math.abs(best - now)) best = candidate;
+  }
+  return best;
 }
 
 function dayIndex(date) {
@@ -82,7 +125,7 @@ const pad = (n) => String(n).padStart(2, '0');
 /** "heute 09:46", "gestern 19:56", "24.11. 08:00". */
 export function relativeDate(date, now, text, withTime = true) {
   if (!date) return '';
-  const time = withTime ? ` ${pad(date.getHours())}:${pad(date.getMinutes())}` : '';
+  const time = withTime && !date.noTime ? ` ${pad(date.getHours())}:${pad(date.getMinutes())}` : '';
   const ago = daysAgo(date, now);
   if (ago === 0) return `${text.today_word}${time}`;
   if (ago === 1) return `${text.yesterday_word}${time}`;
@@ -99,7 +142,7 @@ export function parcelModel(deliveries, now, options = {}) {
     const status = PARCEL_STATUS[Number(raw.status_code)] || PARCEL_STATUS[1];
     const events = (Array.isArray(raw.events) ? raw.events : [])
       .filter((event) => event && typeof event === 'object')
-      .map((event) => ({ text: String(event.event || ''), date: parseParcelDate(event.date), location: typeof event.location === 'string' ? event.location : '' }));
+      .map((event) => ({ text: String(event.event || ''), date: parseParcelDate(event.date, now), location: typeof event.location === 'string' ? event.location : '' }));
     const last = events[0];
     const number = String(raw.tracking_number || '');
     const parcel = {
@@ -113,7 +156,7 @@ export function parcelModel(deliveries, now, options = {}) {
       rank: status.rank,
       events,
       last,
-      expected: expectedWindow(raw),
+      expected: expectedWindow(raw, now),
     };
     if (status.key === 'delivered') {
       const when = last && last.date;
@@ -127,15 +170,15 @@ export function parcelModel(deliveries, now, options = {}) {
 }
 
 /** Expected delivery: unix timestamps when the carrier gives them, otherwise the date strings. */
-function expectedWindow(raw) {
+function expectedWindow(raw, now) {
   const start = Number(raw.timestamp_expected);
   if (Number.isFinite(start) && start > 0) {
     const end = Number(raw.timestamp_expected_end);
     return { start: new Date(start * 1000), end: Number.isFinite(end) && end > start ? new Date(end * 1000) : undefined };
   }
-  const from = parseParcelDate(raw.date_expected);
+  const from = parseParcelDate(raw.date_expected, now);
   if (!from) return undefined;
-  const to = parseParcelDate(raw.date_expected_end);
+  const to = parseParcelDate(raw.date_expected_end, now);
   return { start: from, end: to && to > from ? to : undefined };
 }
 
