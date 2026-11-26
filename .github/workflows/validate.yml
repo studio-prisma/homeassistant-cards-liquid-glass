@@ -1,0 +1,91 @@
+name: Validate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Lint, build, test (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22, 24]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      # --ignore-scripts: the only dependency is the DOM used by the tests;
+      # nothing it ships needs an install script.
+      - name: Install test dependency
+        run: npm ci --ignore-scripts
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+  hacs:
+    name: HACS Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: HACS Action
+        uses: hacs/action@main
+        with:
+          category: plugin
+
+  actionlint:
+    name: Workflow lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: actionlint
+        uses: raven-actions/actionlint@v2
+
+  # Central security scan: gitleaks, TruffleHog, Trivy, Semgrep (all blocking).
+  # Pinned to the commit of the release tag named in the comment.
+  security:
+    uses: studio-prisma/github-config-security-workflow/.github/workflows/security.yml@510cea39c4ecb83fb25fdfca88649dc014eae883 # v1.1.0
+    with:
+      semgrep-rules: "p/security-audit p/javascript"
+    secrets:
+      identity-pattern: ${{ secrets.IDENTITY_PATTERN }}
+
+  # Single aggregating context for the branch ruleset. Every studio-prisma repo
+  # requires exactly one check named "Gate".
+  gate:
+    name: Gate
+    runs-on: ubuntu-latest
+    needs: [test, hacs, actionlint, security]
+    if: always()
+    steps:
+      - name: Fail unless every job succeeded
+        if: >-
+          contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled') ||
+          contains(needs.*.result, 'skipped')
+        run: |
+          echo "test=${{ needs.test.result }} hacs=${{ needs.hacs.result }} actionlint=${{ needs.actionlint.result }} security=${{ needs.security.result }}"
+          exit 1

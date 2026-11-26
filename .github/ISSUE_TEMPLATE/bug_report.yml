@@ -1,0 +1,43 @@
+name: Bug report
+description: A card shows something wrong, does the wrong thing or does not load
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Card version
+      description: Printed in the browser console as LIQUID-GLASS-CARDS <version>.
+    validations:
+      required: true
+  - type: input
+    id: ha-version
+    attributes:
+      label: Home Assistant version
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: Browser or app, with version
+      placeholder: Chrome 140 on Windows, companion app on iOS 19
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Card configuration
+      description: The YAML of the affected card. Replace entity ids and names you do not want to share.
+      render: yaml
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected and what happened instead
+    validations:
+      required: true
+  - type: textarea
+    id: console
+    attributes:
+      label: Browser console errors
+      render: text

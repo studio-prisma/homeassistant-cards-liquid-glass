@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate tag
+        id: tag
+        run: |
+          TAG="$GITHUB_REF_NAME"
+          # Later steps put the tag into shell code; only a plain release tag
+          # may get that far. [[ =~ ]] tests the whole string.
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]; then
+            echo "::error::not a release tag (vX.Y.Z or vX.Y.Z-rc.N): $TAG"
+            exit 1
+          fi
+          echo "name=$TAG" >> "$GITHUB_OUTPUT"
+          if [[ "$TAG" == *-rc.* ]]; then echo "prerelease=true" >> "$GITHUB_OUTPUT"; else echo "prerelease=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Version gate
+        env:
+          TAG: ${{ steps.tag.outputs.name }}
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if [ "v$VERSION" != "$TAG" ]; then
+            echo "::error::tag $TAG does not match package.json version $VERSION"
+            exit 1
+          fi
+
+      - name: Install test dependency
+        run: npm ci --ignore-scripts
+
+      # The build itself checks that src/core.js and package.json agree.
+      - name: Lint, build, test
+        run: |
+          npm run lint
+          npm run build
+          npm test
+
+      - name: Show artifact
+        run: |
+          ls -l dist/
+          sha256sum dist/liquid-glass-cards.js
+
+      - name: Extract CHANGELOG section for this version
+        id: changelog
+        env:
+          TAG: ${{ steps.tag.outputs.name }}
+        run: |
+          VERSION="${TAG#v}"
+          NOTES=$(awk -v v="$VERSION" '
+            index($0, "## [" v "]") == 1 { found=1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md)
+          if [ -z "$NOTES" ]; then
+            echo "::error::no CHANGELOG section for $TAG"
+            exit 1
+          fi
+          {
+            echo 'notes<<RELEASE_NOTES_EOF'
+            echo "$NOTES"
+            echo 'RELEASE_NOTES_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: ${{ steps.tag.outputs.name }}
+          body: ${{ steps.changelog.outputs.notes }}
+          prerelease: ${{ steps.tag.outputs.prerelease }}
+          files: dist/liquid-glass-cards.js
+          fail_on_unmatched_files: true
