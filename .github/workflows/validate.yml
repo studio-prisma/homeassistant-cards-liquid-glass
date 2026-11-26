@@ -44,10 +44,11 @@ jobs:
 
   # Informational until the first stable release: HACS validates the default branch or
   # the latest stable release and ignores pre-releases, so it can only pass from 0.2.0
-  # on. With 0.2.0, add `hacs` back to the needs of the Gate job.
+  # on. With 0.2.0, add `hacs` back to the needs of the Gate job and drop continue-on-error.
   hacs:
     name: HACS Validation
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v7
