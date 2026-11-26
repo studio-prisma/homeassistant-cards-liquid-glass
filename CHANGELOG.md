@@ -4,6 +4,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.2.0-rc.1] - 2026-11-26
+
+First pre-release. In daily use on one installation; options may still change before 0.2.0.
+
 ### Added
 
 - Cards `lg-hero`, `lg-headline`, `lg-now`, `lg-rooms`, `lg-room`, `lg-list`, `lg-stat` and `lg-nav`.
@@ -19,4 +23,5 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 - Interface texts in English and German.
 - Build without third-party tools (`tools/build.mjs`), lint (`tools/lint.mjs`), unit tests and a DOM boot test.
 
-[Unreleased]: https://github.com/studio-prisma/homeassistant-cards-liquid-glass/commits/main
+[Unreleased]: https://github.com/studio-prisma/homeassistant-cards-liquid-glass/compare/v0.2.0-rc.1...HEAD
+[0.2.0-rc.1]: https://github.com/studio-prisma/homeassistant-cards-liquid-glass/releases/tag/v0.2.0-rc.1

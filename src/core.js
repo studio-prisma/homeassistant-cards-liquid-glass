@@ -19,7 +19,7 @@
  * @license MIT
  */
 
-export const VERSION = '0.2.0';
+export const VERSION = '0.2.0-rc.1';
 
 export const STRINGS = {
   en: {

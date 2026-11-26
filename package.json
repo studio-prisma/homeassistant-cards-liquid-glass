@@ -1,6 +1,6 @@
 {
   "name": "homeassistant-cards-liquid-glass",
-  "version": "0.2.0",
+  "version": "0.2.0-rc.1",
   "description": "Liquid Glass cards for Home Assistant dashboards",
   "private": true,
   "type": "module",
