@@ -10,6 +10,8 @@ import { parcelText, parcelModel, parcelSummary, relativeDate, expectedText, add
  */
 
 const PARCEL_FRESH_MS = 90 * 1000;
+// The wall tablet is left alone for long stretches; an expanded list folds back on its own.
+const PARCEL_COLLAPSE_MS = 2 * 60 * 1000;
 
 export const PARCELS_CSS = `
   .card { display: flex; flex-direction: column; gap: 12px; background: var(--lg-panel-bg, rgba(255, 255, 255, 0.05)); }
@@ -55,6 +57,11 @@ export const PARCELS_CSS = `
   .p.orange .tl div:first-child::before { background: #ffb48a; }
   .tl small { display: block; color: rgba(242, 244, 248, 0.45); font-size: 11.5px; }
   .empty { font-size: 14px; color: var(--lg-faint); }
+  .p.compact { padding: 10px 14px; }
+  .more { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 40px; border-radius: 13px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.05); color: rgba(242, 244, 248, 0.85); font-size: 13.5px; font-weight: 500; }
+  .more svg { width: 10px; height: 10px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; opacity: 0.7; transition: transform 240ms ease; }
+  .more[aria-expanded="true"] svg { transform: rotate(180deg); }
+  @media (pointer: coarse) { .more { height: 44px; } }
   .sheet { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 320ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 220ms ease; opacity: 0; }
   .sheet.open { grid-template-rows: 1fr; opacity: 1; }
   .sheet > div { overflow: hidden; }
@@ -98,7 +105,8 @@ export class LgParcels extends LgBase {
     if (config.max !== undefined && !(Number(config.max) >= 1)) throw new Error('max must be 1 or more');
     this._built = false;
     this._open = new Set();
-    this._setConfig({ keep_days: 2, max: 6, show_steps: true, hide_empty: false, ...config });
+    this._expanded = false;
+    this._setConfig({ keep_days: 2, max: 3, show_steps: true, hide_empty: false, ...config });
   }
 
   getCardSize() {
@@ -120,7 +128,7 @@ export class LgParcels extends LgBase {
   _signature() {
     const stateObj = this._hass.states[this._config.entity];
     const now = new Date();
-    return [stateObj ? stateObj.state : '-', stateObj ? stateObj.last_updated : '', now.toDateString(), [...this._open].join(','), this._fresh ? this._fresh.number : ''].join('|');
+    return [stateObj ? stateObj.state : '-', stateObj ? stateObj.last_updated : '', now.toDateString(), [...this._open].join(','), this._fresh ? this._fresh.number : '', this._expanded ? 1 : 0].join('|');
   }
 
   _deliveries() {
@@ -148,7 +156,10 @@ export class LgParcels extends LgBase {
     this._list = h('div', { class: 'list' });
     this._card = h('section', { class: 'card glass' }, head);
     if (this._config.device_id) this._card.append(this._buildSheet(text));
-    this._card.append(this._sum, this._list);
+    this._moreBtn = h('button', { class: 'more press', type: 'button', 'aria-expanded': 'false' });
+    this._moreBtn.addEventListener('click', () => this._setExpanded(!this._expanded));
+    this._card.addEventListener('pointerdown', () => this._armCollapse());
+    this._card.append(this._sum, this._list, this._moreBtn);
     this._mount(PARCELS_CSS, this._card);
     this._built = true;
   }
@@ -274,21 +285,44 @@ export class LgParcels extends LgBase {
     }, PARCEL_FRESH_MS);
   }
 
+  _setExpanded(value) {
+    this._expanded = value;
+    this._armCollapse();
+    fire(this, 'haptic', 'selection');
+    this._update();
+  }
+
+  _armCollapse() {
+    window.clearTimeout(this._collapseTimer);
+    if (!this._expanded) return;
+    this._collapseTimer = window.setTimeout(() => {
+      this._expanded = false;
+      this._update();
+    }, PARCEL_COLLAPSE_MS);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    window.clearTimeout(this._collapseTimer);
+    this._expanded = false;
+  }
+
   _row(parcel, now, text) {
     const open = this._open.has(parcel.id);
     const fresh = this._fresh && this._fresh.number === parcel.number;
     const status = parcel.key === 'delivered' && parcel.delivered ? `✓ ${relativeDate(parcel.delivered, now, text)}` : text.status[parcel.key];
     const tagTone = fresh ? 'blue' : parcel.tone === 'neutral' ? '' : parcel.tone === 'blue' ? '' : parcel.tone;
-    const row = h('button', { class: `p press ${parcel.tone}${fresh ? ' fresh' : ''}`, type: 'button', 'aria-expanded': open ? 'true' : 'false' });
+    const compact = this._expanded && !open && parcel.key !== 'delivered';
+    const row = h('button', { class: `p press ${parcel.tone}${fresh ? ' fresh' : ''}${compact ? ' compact' : ''}`, type: 'button', 'aria-expanded': open ? 'true' : 'false' });
     const meta = parcel.key === 'delivered'
       ? ''
       : fresh && !parcel.last
         ? text.just_added
         : expectedText(parcel.expected, now, text, locale(this._hass)) || (parcel.last ? [parcel.last.text.slice(0, 80), relativeDate(parcel.last.date, now, text)].filter(Boolean).join(' · ') : '');
     const info = h('div', { class: 'grow' }, h('div', { class: 'name' }, parcel.name));
-    if (meta) info.append(h('div', { class: 'meta' }, meta));
+    if (meta && !compact) info.append(h('div', { class: 'meta' }, meta));
     row.append(h('div', { class: 'top' }, h('div', { class: 'badge' }, parcel.carrier), info, h('span', { class: `tag ${tagTone}` }, fresh ? text.new : status)));
-    if (parcel.key !== 'delivered' && this._config.show_steps !== false) {
+    if (parcel.key !== 'delivered' && this._config.show_steps !== false && !compact) {
       const track = h('div', { class: 'track', 'aria-hidden': 'true' });
       const steps = h('div', { class: 'steps' });
       text.steps.forEach((label, index) => {
@@ -322,7 +356,9 @@ export class LgParcels extends LgBase {
     if (this._fresh && !model.some((p) => p.number === this._fresh.number)) {
       model = [{ id: `fresh:${this._fresh.number}`, number: this._fresh.number, name: this._fresh.name, carrier: '…', key: 'info_received', tone: 'blue', step: 0, rank: -1, events: [], last: undefined }, ...model];
     }
-    const shown = model.slice(0, Math.max(1, Number(this._config.max) || 6));
+    const limit = Math.max(1, Number(this._config.max) || 3);
+    const shown = this._expanded ? model : model.slice(0, limit);
+    const hidden = model.length - limit;
     this._sum.replaceChildren();
     for (const [index, sentence] of parcelSummary(model, now, text).entries()) {
       if (index) this._sum.append(' ');
@@ -331,6 +367,19 @@ export class LgParcels extends LgBase {
     this._sum.hidden = !this._sum.childNodes.length;
     this._list.replaceChildren(...shown.map((parcel) => this._row(parcel, now, text)));
     if (!shown.length) this._list.append(h('div', { class: 'empty' }, this._config.empty_text || text.empty));
+    this._moreBtn.hidden = hidden <= 0;
+    if (hidden > 0) {
+      const chevron = document.createElementNS(SVG_NS, 'svg');
+      chevron.setAttribute('viewBox', '0 0 10 10');
+      chevron.setAttribute('aria-hidden', 'true');
+      const line = document.createElementNS(SVG_NS, 'path');
+      line.setAttribute('d', 'M2 3.5l3 3 3-3');
+      chevron.append(line);
+      this._moreBtn.replaceChildren(this._expanded ? text.less : text.more.replace('{n}', String(hidden)), chevron);
+      this._moreBtn.setAttribute('aria-expanded', this._expanded ? 'true' : 'false');
+    } else if (this._expanded) {
+      this._expanded = false;
+    }
     this.style.display = !shown.length && this._config.hide_empty && !(this._sheet && this._sheet.classList.contains('open')) ? 'none' : '';
   }
 }

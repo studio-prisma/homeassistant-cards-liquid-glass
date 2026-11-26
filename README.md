@@ -225,7 +225,7 @@ type: custom:lg-parcels
 entity: sensor.parcel_raw_shipment_data     # raw shipment data sensor of the Parcel integration
 device_id: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4  # optional: Parcel device, shows the + button for adding
 keep_days: 2                                # delivered parcels stay this many days, faded
-max: 6
+max: 3                                      # more parcels sit behind "Show N more"
 hide_empty: false                           # true: no card when there is nothing to show
 ```
 

@@ -225,8 +225,7 @@ type: custom:lg-parcels
 entity: sensor.parcel_raw_shipment_data     # Rohdaten-Sensor der Parcel-Integration
 device_id: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4  # optional: Parcel-Gerät, zeigt den Plus-Knopf zum Hinzufügen
 keep_days: 2                                # zugestellte Sendungen bleiben so viele Tage, blass
-max: 6
-hide_empty: false                           # true: keine Karte, wenn nichts da ist
+max: 3                                      # weitere Sendungen hinter hide_empty: false                           # true: keine Karte, wenn nichts da ist
 ```
 
 Braucht die Integration [Parcel](https://github.com/jmdevita/parcel-ha). Die Karte liest das Attribut `deliveries` des Rohdaten-Sensors. Statt einer Zahl schreibt sie ein bis zwei Sätze („Schuhe sind angekündigt. Bücher kamen gestern.“). Sendungen in der Zustellung sind gelb, verpasste Zustellungen, Abholungen und Probleme orange. Ein Tippen auf eine Sendung zeigt die letzten Ereignisse. Der Plus-Knopf öffnet zwei Felder in der Karte; der Paketdienst wird beim Tippen erkannt (`parcelapp.detect_carrier`), hinzugefügt wird mit `parcelapp.add_parcel`. Hinzufügen braucht Parcel Premium, das etwa 20 Sendungen am Tag erlaubt; eine Ablehnung steht unter dem Knopf.
