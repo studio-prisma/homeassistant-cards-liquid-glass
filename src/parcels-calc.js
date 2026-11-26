@@ -8,7 +8,7 @@ export const PARCEL_TEXT = {
     title: 'Parcels', add: 'Add', adding: 'Adding…', add_title: 'Add parcel', close: 'Close',
     number: 'Tracking number', label: 'Name', detected: 'Detected:', unknown_carrier: 'Carrier is detected from the number',
     carrier: 'Carrier', carrier_auto: 'Detect automatically', carrier_sure: 'Carrier detected, change it if needed', carrier_chosen: 'Carrier chosen by hand', carrier_unsure: 'Carrier only guessed, please check', not_detected: 'Carrier not recognised, please choose it.',
-    needs_postcode: 'Parcel may need the postcode for this carrier; add it in the Parcel app if tracking stays empty.',
+    postcode: 'Postcode', postcode_hint: 'Empty = default from the Parcel settings',
     added: 'added.', failed: 'Not added:', failed_default: 'Parcel refused it (daily limit or unknown number).',
     more: 'Show {n} more', less: 'Show less', empty: 'No parcels.', just_added: 'Just added', new: 'New', expected: 'Expected', today_word: 'today', yesterday_word: 'yesterday',
     steps: ['Announced', 'On the way', 'Delivery', 'Here'],
@@ -23,7 +23,7 @@ export const PARCEL_TEXT = {
     title: 'Pakete', add: 'Hinzufügen', adding: 'Wird hinzugefügt …', add_title: 'Sendung hinzufügen', close: 'Schließen',
     number: 'Sendungsnummer', label: 'Bezeichnung', detected: 'Erkannt:', unknown_carrier: 'Paketdienst wird aus der Nummer erkannt',
     carrier: 'Paketdienst', carrier_auto: 'Automatisch erkennen', carrier_sure: 'Paketdienst erkannt, bei Bedarf ändern', carrier_chosen: 'Paketdienst von Hand gewählt', carrier_unsure: 'Paketdienst nur geraten, bitte prüfen', not_detected: 'Paketdienst nicht erkannt, bitte auswählen.',
-    needs_postcode: 'Parcel braucht hier evtl. die Postleitzahl. Bleibt die Verfolgung leer, in der Parcel-App nachtragen.',
+    postcode: 'Postleitzahl', postcode_hint: 'Leer = Standard aus den Parcel-Einstellungen',
     added: 'hinzugefügt.', failed: 'Nicht hinzugefügt:', failed_default: 'Parcel hat abgelehnt (Tageslimit oder Nummer unbekannt).',
     more: '{n} weitere anzeigen', less: 'Weniger anzeigen', empty: 'Keine Sendungen.', just_added: 'Gerade hinzugefügt', new: 'Neu', expected: 'Voraussichtlich', today_word: 'heute', yesterday_word: 'gestern',
     steps: ['Angekündigt', 'Unterwegs', 'Zustellung', 'Da'],
@@ -58,8 +58,8 @@ const CARRIER_SHORT = { dp: 'DHL', it: 'PI', amzlde: 'AMZ', amzluk: 'AMZ', amazo
 /**
  * Carriers offered when Parcel cannot tell the carrier from the number. Keys
  * are Parcel's carrier keys (api.parcel.app/external/supported_carriers.json),
- * the usual ones in Germany first. DPD Germany (`dpdpcode`) wants a postcode at
- * Parcel; the integration does not pass one, so the card says so when chosen.
+ * the usual ones in Germany first. DPD Germany (`dpdpcode`) and PostNL want a
+ * postcode; the card shows a field for it, empty means the integration's default.
  */
 export const PARCEL_CARRIERS = [
   ['dp', 'DHL Paket / Deutsche Post'], ['dpr', 'Deutsche Post Brief'], ['dhl', 'DHL Express'], ['hermes', 'Hermes'],
@@ -68,7 +68,7 @@ export const PARCEL_CARRIERS = [
   ['swiss', 'Swiss Post'], ['tntp', 'PostNL'],
 ];
 
-/** Carriers for which Parcel wants a postcode the integration cannot send yet. */
+/** Carriers for which Parcel wants a postcode; the card then shows a postcode field. */
 export const PARCEL_NEEDS_POSTCODE = ['dpdpcode', 'tntp'];
 
 /** Number formats Parcel's own detection misses, e.g. DHL Paket "JJD…" from business senders. */

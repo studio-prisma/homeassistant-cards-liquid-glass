@@ -70,6 +70,7 @@ export const PARCELS_CSS = `
   label.field { display: flex; flex-direction: column; gap: 3px; padding: 9px 13px; border-radius: 13px; background: rgba(0, 0, 0, 0.18); border: 1px solid rgba(255, 255, 255, 0.1); transition: border-color 160ms ease, box-shadow 160ms ease; }
   label.field:focus-within { border-color: rgba(var(--lg-cool-rgb), 0.55); box-shadow: 0 0 0 3px rgba(var(--lg-cool-rgb), 0.15); }
   label.field.unsure { border-color: rgba(255, 180, 138, 0.6); }
+  label.field[hidden] { display: none; }
   label.field span { font-size: 11.5px; color: rgba(242, 244, 248, 0.55); }
   input { font: inherit; font-size: 16px; color: var(--lg-text); background: none; border: 0; outline: none; padding: 0; width: 100%; min-width: 0; }
   input::placeholder { color: rgba(242, 244, 248, 0.3); }
@@ -108,7 +109,6 @@ export class LgParcels extends LgBase {
     if (config.device_id !== undefined && (typeof config.device_id !== 'string' || !/^[a-f0-9]{16,64}$/i.test(config.device_id))) throw new Error('device_id must be the id of the Parcel device');
     if (config.keep_days !== undefined && !(Number(config.keep_days) >= 0)) throw new Error('keep_days must be 0 or more');
     if (config.max !== undefined && !(Number(config.max) >= 1)) throw new Error('max must be 1 or more');
-    if (config.postcode !== undefined && !/^[A-Za-z0-9 -]{3,10}$/.test(String(config.postcode))) throw new Error('postcode must be 3 to 10 letters or digits');
     this._built = false;
     this._open = new Set();
     this._expanded = false;
@@ -190,18 +190,23 @@ export class LgParcels extends LgBase {
     });
     const carrier = h('label', { class: 'field' }, h('span', null, text.carrier), this._inCarrier);
     this._carrierField = carrier;
+    // Only for carriers that need it; left empty, the Parcel integration sends its default postcode.
+    const postcode = field(text.postcode, { maxlength: '10', placeholder: text.postcode_hint, inputmode: 'text' });
+    this._inPostcode = postcode.input;
+    this._postcodeField = postcode.node;
+    this._postcodeField.hidden = true;
     this._hintLine = h('span', { class: 'hintline' }, text.unknown_carrier);
     this._go = h('button', { class: 'go press', type: 'button' }, text.add);
     this._go.addEventListener('click', () => this._submit());
     this._msg = h('div', { class: 'msg', role: 'status' });
-    const form = h('div', { class: 'form' }, number.node, name.node, carrier, h('div', { class: 'actions' }, this._hintLine, this._go), this._msg);
+    const form = h('div', { class: 'form' }, number.node, name.node, carrier, this._postcodeField, h('div', { class: 'actions' }, this._hintLine, this._go), this._msg);
     this._sheet = h('div', { class: 'sheet', 'aria-hidden': 'true' }, h('div', null, form));
     this._setInert(true);
     return this._sheet;
   }
 
   _setInert(value) {
-    for (const el of [this._inNumber, this._inName, this._inCarrier, this._go]) if (el) el.tabIndex = value ? -1 : 0;
+    for (const el of [this._inNumber, this._inName, this._inCarrier, this._inPostcode, this._go]) if (el) el.tabIndex = value ? -1 : 0;
   }
 
   _toggleSheet(force) {
@@ -266,10 +271,8 @@ export class LgParcels extends LgBase {
     const code = this._inCarrier.value;
     let line = text.unknown_carrier;
     let warn = false;
-    if (code && PARCEL_NEEDS_POSTCODE.includes(code) && !this._config.postcode) {
-      line = text.needs_postcode;
-      warn = true;
-    } else if (state === 'sure') line = text.carrier_sure;
+    this._postcodeField.hidden = !PARCEL_NEEDS_POSTCODE.includes(code);
+    if (state === 'sure') line = text.carrier_sure;
     else if (state === 'chosen') line = text.carrier_chosen;
     else if (state === 'unsure') {
       line = text.carrier_unsure;
@@ -302,8 +305,9 @@ export class LgParcels extends LgBase {
     const courier = this._inCarrier.value || guessCarrier(number);
     const data = { device_id: this._config.device_id, tracking_number: number, parcel_name: name, language: locale(this._hass).slice(0, 2) };
     if (courier) data.courier = courier;
-    // Only carriers that need it get the postcode; it needs Parcel integration support for `postcode`.
-    if (courier && this._config.postcode && PARCEL_NEEDS_POSTCODE.includes(courier)) data.postcode = String(this._config.postcode).trim();
+    // A postcode typed here wins over the default in the Parcel integration's settings.
+    const postcode = this._inPostcode.value.trim();
+    if (postcode && PARCEL_NEEDS_POSTCODE.includes(courier)) data.postcode = postcode;
     try {
       const result = await this._hass.callService('parcelapp', 'add_parcel', data, undefined, false, true);
       error = addError(result, text);
@@ -325,6 +329,7 @@ export class LgParcels extends LgBase {
     this._inNumber.value = '';
     this._inName.value = '';
     this._inCarrier.value = '';
+    this._inPostcode.value = '';
     this._carrierTouched = false;
     this._detectSoon();
     this._fresh = { number, name, carrier: '', at: Date.now() };
