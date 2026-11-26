@@ -1,7 +1,7 @@
 import { h, locale, fire, isUsable, SVG_NS } from './core.js';
 import { createEditor } from './editor.js';
 import { LgBase } from './base.js';
-import { parcelText, parcelModel, parcelSummary, relativeDate, expectedText, addError } from './parcels-calc.js';
+import { parcelText, parcelModel, parcelSummary, relativeDate, expectedText, addError, PARCEL_CARRIERS, guessCarrier, carrierName } from './parcels-calc.js';
 import { translateEvent } from './parcel-phrases.js';
 
 /**
@@ -72,6 +72,9 @@ export const PARCELS_CSS = `
   label.field span { font-size: 11.5px; color: rgba(242, 244, 248, 0.55); }
   input { font: inherit; font-size: 16px; color: var(--lg-text); background: none; border: 0; outline: none; padding: 0; width: 100%; min-width: 0; }
   input::placeholder { color: rgba(242, 244, 248, 0.3); }
+  select { font: inherit; font-size: 16px; color: var(--lg-text); background: none; border: 0; outline: none; padding: 0; width: 100%; min-width: 0; color-scheme: dark; appearance: auto; }
+  select option { color: #111; background: #fff; }
+  .hintline.warn { color: #ffb48a; }
   .actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
   .hintline { font-size: 12px; color: rgba(242, 244, 248, 0.55); }
   .go { height: 44px; padding: 0 20px; border-radius: 13px; border: 1px solid rgba(var(--lg-cool-rgb), 0.45); background: rgba(var(--lg-cool-rgb), 0.2); font-weight: 600; font-size: 14px; flex: none; }
@@ -176,18 +179,22 @@ export class LgParcels extends LgBase {
     this._inNumber = number.input;
     this._inName = name.input;
     this._inNumber.addEventListener('input', () => this._detectSoon());
+    // Parcel cannot tell every number's carrier (DHL Paket "JJD…" for one); then the carrier is chosen here.
+    this._inCarrier = h('select', null, h('option', { value: '' }, text.carrier_auto), ...PARCEL_CARRIERS.map(([key, label]) => h('option', { value: key }, label)));
+    this._inCarrier.addEventListener('change', () => { this._carrierTouched = true; });
+    const carrier = h('label', { class: 'field' }, h('span', null, text.carrier), this._inCarrier);
     this._hintLine = h('span', { class: 'hintline' }, text.unknown_carrier);
     this._go = h('button', { class: 'go press', type: 'button' }, text.add);
     this._go.addEventListener('click', () => this._submit());
     this._msg = h('div', { class: 'msg', role: 'status' });
-    const form = h('div', { class: 'form' }, number.node, name.node, h('div', { class: 'actions' }, this._hintLine, this._go), this._msg);
+    const form = h('div', { class: 'form' }, number.node, name.node, carrier, h('div', { class: 'actions' }, this._hintLine, this._go), this._msg);
     this._sheet = h('div', { class: 'sheet', 'aria-hidden': 'true' }, h('div', null, form));
     this._setInert(true);
     return this._sheet;
   }
 
   _setInert(value) {
-    for (const el of [this._inNumber, this._inName, this._go]) if (el) el.tabIndex = value ? -1 : 0;
+    for (const el of [this._inNumber, this._inName, this._inCarrier, this._go]) if (el) el.tabIndex = value ? -1 : 0;
   }
 
   _toggleSheet(force) {
@@ -207,6 +214,7 @@ export class LgParcels extends LgBase {
     if (value.length < 8) {
       this._hintLine.textContent = this._text.unknown_carrier;
       this._hintLine.className = 'hintline';
+      if (!this._carrierTouched) this._inCarrier.value = '';
       return;
     }
     this._detectTimer = window.setTimeout(() => this._detect(value), 500);
@@ -221,12 +229,26 @@ export class LgParcels extends LgBase {
       if (best && best.carrier_name) {
         this._hintLine.textContent = `${this._text.detected} ${String(best.carrier_name).slice(0, 40)}`;
         this._hintLine.className = 'tag blue';
-      } else {
-        this._hintLine.textContent = this._text.unknown_carrier;
-        this._hintLine.className = 'hintline';
+        if (!this._carrierTouched) this._inCarrier.value = '';
+        return;
       }
     } catch (err) {
-      // Detection is only a hint; adding still works without it.
+      // Detection is only a hint; fall through to the local guess.
+    }
+    if (this._inNumber.value.trim() !== value) return;
+    this._showGuess(value);
+  }
+
+  /** Parcel found nothing: preselect a carrier from known number formats, or ask for one. */
+  _showGuess(value) {
+    const guess = guessCarrier(value);
+    if (guess && !this._carrierTouched) this._inCarrier.value = guess;
+    if (this._inCarrier.value) {
+      this._hintLine.textContent = `${guess && !this._carrierTouched ? this._text.guessed : this._text.detected} ${carrierName(this._inCarrier.value)}`;
+      this._hintLine.className = 'tag blue';
+    } else {
+      this._hintLine.textContent = this._text.not_detected;
+      this._hintLine.className = 'hintline warn';
     }
   }
 
@@ -245,13 +267,12 @@ export class LgParcels extends LgBase {
     this._msg.textContent = '';
     this._msg.className = 'msg';
     let error;
+    // A chosen carrier wins; otherwise a known number format; otherwise Parcel detects it.
+    const courier = this._inCarrier.value || guessCarrier(number);
+    const data = { device_id: this._config.device_id, tracking_number: number, parcel_name: name, language: locale(this._hass).slice(0, 2) };
+    if (courier) data.courier = courier;
     try {
-      const result = await this._hass.callService('parcelapp', 'add_parcel', {
-        device_id: this._config.device_id,
-        tracking_number: number,
-        parcel_name: name,
-        language: locale(this._hass).slice(0, 2),
-      }, undefined, false, true);
+      const result = await this._hass.callService('parcelapp', 'add_parcel', data, undefined, false, true);
       error = addError(result, text);
     } catch (err) {
       error = addError(err instanceof Error ? err : new Error(String((err && err.message) || '')), text);
@@ -262,6 +283,7 @@ export class LgParcels extends LgBase {
     if (error) {
       this._msg.textContent = `${text.failed} ${error}`;
       this._msg.className = 'msg err';
+      if (error === text.not_detected) this._inCarrier.focus();
       fire(this, 'haptic', 'failure');
       return;
     }
@@ -269,6 +291,8 @@ export class LgParcels extends LgBase {
     this._msg.className = 'msg ok';
     this._inNumber.value = '';
     this._inName.value = '';
+    this._inCarrier.value = '';
+    this._carrierTouched = false;
     this._detectSoon();
     this._fresh = { number, name, carrier: '', at: Date.now() };
     fire(this, 'haptic', 'success');

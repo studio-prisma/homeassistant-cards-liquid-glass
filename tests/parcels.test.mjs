@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parcelText, parcelModel, parcelSummary, parseParcelDate, relativeDate, carrierShort, expectedText, addError } from '../src/parcels-calc.js';
+import { parcelText, parcelModel, parcelSummary, parseParcelDate, relativeDate, carrierShort, expectedText, addError, guessCarrier, carrierName } from '../src/parcels-calc.js';
 
 const de = parcelText('de');
 const NOW = new Date(2026, 10, 26, 10, 0);
@@ -109,4 +109,15 @@ test('event texts: known carrier phrases are translated, the rest stays as sent'
   assert.equal(translateEvent('Something only this carrier says', 'de').translated, false);
   assert.equal(translateEvent('', 'de').text, '');
   assert.equal(translateEvent(undefined, 'de').text, '');
+});
+test('guessCarrier knows the DHL Paket formats Parcel misses; Parcel refusal about the carrier is said in plain words', () => {
+  assert.equal(guessCarrier('JJD149990200088396073'), 'dp');
+  assert.equal(guessCarrier(' jjd 1499 9020 0088 396073 '), 'dp');
+  assert.equal(guessCarrier('JVGL06291234567890'), 'dp');
+  assert.equal(guessCarrier('00340434161234567890'), 'dp');
+  assert.equal(guessCarrier('1Z999AA10123456784'), undefined);
+  assert.equal(guessCarrier(''), undefined);
+  assert.equal(carrierName('dp'), 'DHL Paket / Deutsche Post');
+  assert.equal(addError(new Error("Could not auto-detect carrier for tracking number 'X'. Please provide the 'courier' field manually."), de), 'Paketdienst nicht erkannt, bitte auswählen.');
+  assert.equal(addError({ response: { success: false, error_message: 'Daily limit' } }, de), 'Daily limit');
 });
