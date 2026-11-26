@@ -63,13 +63,13 @@ const CARRIER_SHORT = { dp: 'DHL', it: 'PI', amzlde: 'AMZ', amzluk: 'AMZ', amazo
  */
 export const PARCEL_CARRIERS = [
   ['dp', 'DHL Paket / Deutsche Post'], ['dpr', 'Deutsche Post Brief'], ['dhl', 'DHL Express'], ['hermes', 'Hermes'],
-  ['dpdpcode', 'DPD'], ['gls', 'GLS'], ['ups', 'UPS'], ['amzlde', 'Amazon (DE)'], ['fedex', 'FedEx'], ['tnt', 'TNT'],
+  ['dpdpcode', 'DPD'], ['gls', 'GLS'], ['glsnl', 'GLS Niederlande / Netherlands'], ['ups', 'UPS'], ['amzlde', 'Amazon (DE)'], ['fedex', 'FedEx'], ['tnt', 'TNT'],
   ['gover', 'GO! Express'], ['aliex', 'AliExpress / Cainiao'], ['it', 'Poste Italiane'], ['at', 'Österreichische Post'],
   ['swiss', 'Swiss Post'], ['tntp', 'PostNL'],
 ];
 
 /** Carriers for which Parcel wants a postcode; the card then shows a postcode field. */
-export const PARCEL_NEEDS_POSTCODE = ['dpdpcode', 'tntp'];
+export const PARCEL_NEEDS_POSTCODE = ['dpdpcode', 'glsnl', 'tntp'];
 
 /** Number formats Parcel's own detection misses, e.g. DHL Paket "JJD…" from business senders. */
 const CARRIER_GUESSES = [

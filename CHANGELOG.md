@@ -10,7 +10,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 - `lg-parcels`: at most `max` parcels (default 3), the rest behind "Show N more"; expanded rows are compact and fold back after two minutes without input.
 - `lg-parcels`: common carrier event texts translated to German or English (original on hover); dates in words without a year (Amazon) read correctly; dates without a time show no time.
 - `lg-parcels`: carrier picker when adding (usual carriers in Germany first); DHL Paket numbers (`JJD…`, `JVGL…`, `00340…`) that Parcel does not detect are preselected; Parcel's carrier refusal is shown in plain words.
-- `lg-parcels`: postcode field for carriers that need it (DPD Germany, PostNL); left empty, the Parcel integration's default postcode applies. Needs a Parcel integration whose `add_parcel` accepts `postcode`.
+- `lg-parcels`: postcode field for carriers that need it (DPD Germany, GLS Netherlands, PostNL); left empty, the Parcel integration's default postcode applies. Needs a Parcel integration whose `add_parcel` accepts `postcode`.
 
 ## [0.2.0-rc.1] - 2026-11-26
 
