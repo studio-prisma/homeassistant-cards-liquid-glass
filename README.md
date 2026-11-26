@@ -20,6 +20,7 @@ One file, no build tools on your side, no third-party libraries at runtime. The 
 | `custom:lg-nav` | Bottom bar on phones, pill row on wide screens |
 | `custom:lg-agenda` | Upcoming calendar events grouped by day (today, tomorrow, …) |
 | `custom:lg-energy` | Energy today, this week and this month, each against the previous period up to the same point; today's curve over yesterday's; largest consumer |
+| `custom:lg-parcels` | Parcels from the Parcel integration: one sentence on what is going on, a four-step track per parcel, history on tap, adding a parcel in place |
 | `custom:lg-idle` | No visible card: opens a calm view after inactivity, a tap returns, dims the screen at night |
 | `custom:lg-column` | Tall glass panel holding other cards; on wide screens it reaches the bottom of the window and docks its last cards at the bottom |
 
@@ -216,6 +217,19 @@ statistics: [sensor.kitchen_energy, sensor.office_energy]   # optional
 Without `statistics` the card adds up the top-level devices of the energy settings (devices not included in another one); without those it uses the grid meter. Trends compare with yesterday up to the same time, the previous week up to the same weekday and time, and the previous month up to the same day. Statistics are read every ten minutes.
 
 `lg-list` also has `zero_text` per row (text instead of "0 parcels") and `warn: {entity, when, text, label}`: when the rule matches, the card turns amber, shows the text as a banner and the label at the top right. With `mode_entity` the top right shows `mode_label` (default "direct") otherwise.
+
+### lg-parcels
+
+```yaml
+type: custom:lg-parcels
+entity: sensor.parcel_raw_shipment_data     # raw shipment data sensor of the Parcel integration
+device_id: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4  # optional: Parcel device, shows the + button for adding
+keep_days: 2                                # delivered parcels stay this many days, faded
+max: 6
+hide_empty: false                           # true: no card when there is nothing to show
+```
+
+Needs the [Parcel](https://github.com/jmdevita/parcel-ha) integration. The card reads the `deliveries` attribute of the raw shipment data sensor. Instead of a count it writes one or two sentences ("Shoes are announced. Books arrived yesterday."). Parcels out for delivery are amber, missed deliveries, pick-ups and problems orange. A tap on a parcel opens its last events. The + button opens two fields in the card; the carrier is detected while typing (`parcelapp.detect_carrier`) and the parcel is added with `parcelapp.add_parcel`. Adding needs Parcel Premium, which allows about 20 additions a day; a refusal is shown under the button.
 
 ### lg-idle (wall displays)
 

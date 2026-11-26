@@ -10,6 +10,7 @@ import { LgColumn } from './column.js';
 import { LgAgenda } from './agenda.js';
 import { LgIdle } from './idle.js';
 import { LgEnergy } from './energy.js';
+import { LgParcels } from './parcels.js';
 import { LgEditor } from './editor.js';
 
 function define(tag, cls, name, description) {
@@ -34,5 +35,6 @@ define('lg-column', LgColumn, 'Liquid Glass Column', 'Tall glass panel that hold
 define('lg-agenda', LgAgenda, 'Liquid Glass Agenda', 'Upcoming calendar events, grouped by day');
 define('lg-idle', LgIdle, 'Liquid Glass Idle', 'Wall display behaviour: calm view after inactivity, tap to return, dim at night');
 define('lg-energy', LgEnergy, 'Liquid Glass Energy', 'Energy today, this week and this month, with trends');
+define('lg-parcels', LgParcels, 'Liquid Glass Parcels', 'Parcels from the Parcel integration: status track, history, add in place');
 
 console.info(`%c LIQUID-GLASS-CARDS %c ${VERSION} `, 'background:#7ab8ff;color:#0b1020;font-weight:700', 'background:#1a2036;color:#f2f4f8');

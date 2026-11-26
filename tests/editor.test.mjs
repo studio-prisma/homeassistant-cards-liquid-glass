@@ -50,6 +50,7 @@ const ROUND_TRIPS = {
   'lg-nav': { items: [{ label: 'Home', icon: 'mdi:home', path: '/dash/home' }, { label: 'Other', path: '/dash/other' }] },
   'lg-agenda': { entities: ['calendar.a', 'calendar.b'], days: 3, exclude: '^Private$', title: 'Week' },
   'lg-energy': { statistics: ['sensor.a', 'sensor.b'], show_top: false, title: 'Strom' },
+  'lg-parcels': { entity: 'sensor.parcels_raw', device_id: 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4', keep_days: 1, max: 4, hide_empty: true, title: 'Post' },
   'lg-idle': { after: 90, path: '/dash/calm', dim_after: '22:00', dim_before: '06:00', dim_opacity: 0.4, users: ['wall'] },
   'lg-column': { dock: 1, fill: false, cards: [{ type: 'custom:lg-now', show_header: false, items: [{ title: 'A' }] }, { type: 'custom:lg-rooms', all_off: true, areas: ['living'] }, { type: 'custom:lg-headline', chips_position: 'below' }] },
 };

@@ -102,11 +102,32 @@ const CONFIGS = {
   'lg-agenda': { entities: ['calendar.home', 'calendar.work'], exclude: '^Private$' },
   'lg-idle': { after: 120, path: '/dash/calm' },
   'lg-energy': { statistics: ['sensor.meter_a', 'sensor.meter_b'] },
+  'lg-parcels': { entity: 'sensor.parcels_raw', device_id: 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4' },
 };
+
+function parcelHass(calls, respond) {
+  const hass = makeHass(calls);
+  const today = new Date();
+  const stamp = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')} 08:12`;
+  hass.states['sensor.parcels_raw'] = {
+    state: '2026-11-26 09:55', last_updated: 'x',
+    attributes: {
+      deliveries: [
+        { carrier_code: 'dhl', description: HOSTILE, status_code: 3, tracking_number: 'Z1', events: [{ event: 'In der Filiale', date: stamp, location: 'Filiale' }, { event: 'Empfänger abwesend', date: stamp }] },
+        { carrier_code: 'ups', description: 'Shirt', status_code: 4, tracking_number: 'U1', events: [{ event: 'In Zustellung', date: stamp }] },
+      ],
+    },
+  };
+  hass.callService = (...args) => {
+    calls.push(args);
+    return respond ? respond(args) : Promise.resolve({ context: {} });
+  };
+  return hass;
+}
 
 test('every card registers, renders and announces itself to the card picker', () => {
   const { window, errors } = boot();
-  const hass = makeHass([]);
+  const hass = parcelHass([]);
   for (const [tag, config] of Object.entries(CONFIGS)) {
     assert.ok(window.customElements.get(tag), `${tag} is defined`);
     const el = mount(window, tag, config, hass);
@@ -374,4 +395,80 @@ test('list: warning banner and amber card when the rule matches; zero text inste
   list.hass = { ...hass };
   assert.equal(list.shadowRoot.querySelector('.banner'), null);
   assert.equal(list.shadowRoot.querySelector('.mode').textContent, 'direct');
+});
+
+test('parcels: sentence, urgent rows first, names as text, history on tap', () => {
+  const { window, errors } = boot();
+  const card = mount(window, 'lg-parcels', CONFIGS['lg-parcels'], parcelHass([]));
+  const root = card.shadowRoot;
+  assert.equal(root.querySelector('.sum').textContent, 'Arriving today: Shirt is out for delivery. ' + HOSTILE + ' is ready for pick-up.');
+  const rows = [...root.querySelectorAll('.p')];
+  assert.deepEqual(rows.map((row) => row.querySelector('.name').textContent), ['Shirt', HOSTILE]);
+  assert.ok(rows[0].classList.contains('amber'));
+  assert.ok(rows[1].classList.contains('orange'));
+  assert.equal(rows[0].querySelectorAll('.track i.f').length, 2);
+  assert.equal(root.querySelector('img'), null);
+  assert.equal(window.__pwned, undefined);
+  assert.equal(root.querySelector('.tl'), null);
+  rows[1].click();
+  const tl = root.querySelectorAll('.p')[1].querySelector('.tl');
+  assert.ok(tl);
+  assert.equal(tl.children.length, 2);
+  assert.match(tl.children[0].textContent, /In der Filiale.*Filiale/);
+  assert.deepEqual(errors, []);
+});
+
+test('parcels: adding calls the integration, clears the fields and shows the new parcel; a refusal shows the reason', async () => {
+  const { window } = boot();
+  const calls = [];
+  const card = mount(window, 'lg-parcels', CONFIGS['lg-parcels'], parcelHass(calls, ([domain, service]) => {
+    if (service === 'detect_carrier') return Promise.resolve({ response: { best_match: 'ups', matches: [{ carrier_code: 'ups', carrier_name: 'UPS' }] } });
+    return Promise.resolve({ context: {}, response: { success: true } });
+  }));
+  const root = card.shadowRoot;
+  const plus = root.querySelector('.plus');
+  plus.click();
+  assert.equal(plus.getAttribute('aria-expanded'), 'true');
+  assert.ok(root.querySelector('.sheet.open'));
+  const [number, name] = root.querySelectorAll('input');
+  number.value = '1ZTEST000000000001';
+  number.dispatchEvent(new window.Event('input'));
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  assert.equal(root.querySelector('.hintline, .tag.blue').textContent, 'Detected: UPS');
+  name.value = 'Shoes';
+  root.querySelector('.go').click();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  const add = calls.find((call) => call[1] === 'add_parcel');
+  assert.deepEqual(plain(add.slice(0, 3)), ['parcelapp', 'add_parcel', { device_id: 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4', tracking_number: '1ZTEST000000000001', parcel_name: 'Shoes', language: 'en' }]);
+  assert.equal(add[5], true, 'asks for the response');
+  assert.equal(number.value, '');
+  assert.equal(root.querySelector('.msg').textContent, 'Shoes added.');
+  const first = root.querySelector('.p');
+  assert.ok(first.classList.contains('fresh'));
+  assert.equal(first.querySelector('.name').textContent, 'Shoes');
+
+  const refused = boot();
+  const card2 = mount(refused.window, 'lg-parcels', CONFIGS['lg-parcels'], parcelHass([], ([, service]) => (service === 'add_parcel' ? Promise.reject({ code: 'home_assistant_error', message: 'Daily limit reached' }) : Promise.resolve({ response: {} }))));
+  const r2 = card2.shadowRoot;
+  r2.querySelector('.plus').click();
+  r2.querySelector('input').value = 'X123456789';
+  r2.querySelector('.go').click();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(r2.querySelector('.msg.err').textContent, 'Not added: Daily limit reached');
+  assert.equal(r2.querySelector('input').value, 'X123456789', 'the number stays for a retry');
+});
+
+test('parcels: no device means no add button; bad configuration is rejected; empty list can hide the card', () => {
+  const { window } = boot();
+  const hass = parcelHass([]);
+  const card = mount(window, 'lg-parcels', { entity: 'sensor.parcels_raw' }, hass);
+  assert.equal(card.shadowRoot.querySelector('.plus'), null);
+  const make = () => window.document.createElement('lg-parcels');
+  assert.throws(() => make().setConfig({}), /entity is required/);
+  assert.throws(() => make().setConfig({ entity: 'sensor.x', device_id: '../x' }), /device_id/);
+  assert.throws(() => make().setConfig({ entity: 'sensor.x', keep_days: -1 }), /keep_days/);
+  const empty = mount(window, 'lg-parcels', { entity: 'sensor.missing', hide_empty: true }, hass);
+  assert.equal(empty.style.display, 'none');
+  const shown = mount(window, 'lg-parcels', { entity: 'sensor.missing' }, hass);
+  assert.equal(shown.shadowRoot.querySelector('.empty').textContent, 'No parcels.');
 });
