@@ -4,6 +4,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Added
+
+- `lg-parcels`: parcels from the Parcel integration with a summary sentence instead of a count, a four-step track per parcel, the history on tap, and adding a parcel in place with carrier detection.
+
 ## [0.2.0-rc.1] - 2026-11-26
 
 First pre-release. In daily use on one installation; options may still change before 0.2.0.

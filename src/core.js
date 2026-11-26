@@ -11,6 +11,7 @@
  *   custom:lg-list      glass card with rows (departures, agenda, system facts)
  *   custom:lg-stat      one big number with a history sparkline
  *   custom:lg-nav       bottom bar on phones, pill row on wide screens
+ *   custom:lg-parcels   parcels with status track, history and adding in place
  *
  * Every card accepts `size: large` for wall displays.
  * All text that comes from Home Assistant (names, states) is written with

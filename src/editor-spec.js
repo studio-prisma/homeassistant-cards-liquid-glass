@@ -1,4 +1,5 @@
 import { locale, t } from './core.js';
+import { parcelText } from './parcels-calc.js';
 
 /**
  * What the visual editor shows for each card, and how a card configuration is
@@ -47,6 +48,8 @@ const LABELS = {
     all_off: 'Button "All lights off" in the header', fill: 'Reach down to the bottom of the window (wide screens)',
     dock: 'Number of cards docked at the bottom', cards: 'Cards in this column',
     entities: 'Calendars', days: 'Days to show', exclude_events: 'Hide events whose title matches (regular expression)',
+    parcel_entity: 'Parcel raw shipment data sensor', device_id: 'Parcel device (enables adding parcels)', keep_days: 'Keep delivered parcels for days',
+    show_steps: 'Show the progress steps', hide_empty: 'Hide the card when there are no parcels',
   },
   de: {
     size: 'Größe', weather: 'Wetter-Entität', show_date: 'Datum anzeigen', mode: 'Modus', name: 'Name',
@@ -82,6 +85,8 @@ const LABELS = {
     all_off: 'Knopf „Alle Lichter aus“ in der Kopfzeile', fill: 'Bis zum unteren Fensterrand reichen (breite Bildschirme)',
     dock: 'Anzahl Karten, die unten angedockt sind', cards: 'Karten in dieser Spalte',
     entities: 'Kalender', days: 'Anzahl Tage', exclude_events: 'Termine ausblenden, deren Titel passt (regulärer Ausdruck)',
+    parcel_entity: 'Rohdaten-Sensor der Parcel-Integration', device_id: 'Parcel-Gerät (erlaubt das Hinzufügen)', keep_days: 'Zugestellte Sendungen so viele Tage zeigen',
+    show_steps: 'Fortschrittsschritte anzeigen', hide_empty: 'Karte ausblenden, wenn keine Sendungen da sind',
   },
 };
 
@@ -388,6 +393,20 @@ export const SPECS = {
       { name: 'statistics', selector: entity('sensor', true) },
       { name: 'show_header', selector: bool, label_key: 'show_header_now' },
       { name: 'show_top', selector: bool },
+    ],
+  },
+  'lg-parcels': {
+    defaults: (hass) => ({ title: parcelText(locale(hass)).title, keep_days: 2, max: 6, show_steps: true, hide_empty: false, empty_text: parcelText(locale(hass)).empty }),
+    lists: {},
+    schema: () => [
+      { name: 'entity', selector: entity('sensor'), label_key: 'parcel_entity' },
+      { name: 'device_id', selector: { device: { integration: 'parcelapp' } } },
+      { name: 'title', selector: text },
+      { name: 'keep_days', selector: number(0, 14) },
+      { name: 'max', selector: number(1, 20) },
+      { name: 'show_steps', selector: bool },
+      { name: 'hide_empty', selector: bool },
+      { name: 'empty_text', selector: text },
     ],
   },
   'lg-idle': {
