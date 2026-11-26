@@ -13,6 +13,6 @@
     "pretest": "node tools/build.mjs"
   },
   "devDependencies": {
-    "jsdom": "26.1.0"
+    "jsdom": "31.0.0"
   }
 }
