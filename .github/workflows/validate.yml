@@ -20,10 +20,10 @@ jobs:
         node: [22, 24]
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -51,7 +51,7 @@ jobs:
     continue-on-error: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # The HACS action can only validate public repositories. While the repository is
       # private the job says so and passes; it validates for real once it is public.
@@ -61,7 +61,7 @@ jobs:
 
       - name: HACS Action
         if: ${{ !github.event.repository.private }}
-        uses: hacs/action@main
+        uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa # main
         with:
           category: plugin
 
@@ -70,15 +70,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: actionlint
-        uses: raven-actions/actionlint@v2
+        uses: studio-prisma/github-config-security-workflow/.github/actions/actionlint@780e3012406a3997f465b04dad9fc52a3a82e5bd # v1.2.1
 
   # Central security scan: gitleaks, TruffleHog, Trivy, Semgrep (all blocking).
   # Pinned to the commit of the release tag named in the comment.
   security:
-    uses: studio-prisma/github-config-security-workflow/.github/workflows/security.yml@510cea39c4ecb83fb25fdfca88649dc014eae883 # v1.1.0
+    uses: studio-prisma/github-config-security-workflow/.github/workflows/security.yml@780e3012406a3997f465b04dad9fc52a3a82e5bd # v1.2.1
     with:
       semgrep-rules: "p/security-audit p/javascript"
     secrets:

@@ -4,6 +4,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Changed
+
+- CI: all GitHub actions pinned to commit SHAs instead of tags; actionlint runs from the shared
+  action in `github-config-security-workflow` with checksum check (security workflow v1.2.1).
+
 ### Added
 
 - `lg-parcels`: parcels from the Parcel integration with a summary sentence instead of a count, a four-step track per parcel, the history on tap, and adding a parcel in place with carrier detection.
