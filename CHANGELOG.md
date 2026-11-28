@@ -7,7 +7,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 ### Changed
 
 - CI: all GitHub actions pinned to commit SHAs instead of tags; actionlint runs from the shared
-  action in `github-config-security-workflow` with checksum check (security workflow v1.2.0).
+  action in `github-config-security-workflow` with checksum check (security workflow v1.2.1).
 
 ### Added
 
